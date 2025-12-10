@@ -2,90 +2,106 @@
 {% block title %}我的房间{% endblock %}
 
 {% block content %}
-<section class="grid-card">
-  <h1>我创建的房间</h1>
-  <p>房间即使关闭也会保留房间号，可在此处随时重新进入管理。</p>
-  <div class="table-scroll">
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>房间名</th>
-          <th>房间号</th>
-          <th>状态</th>
-          <th>创建时间</th>
-          <th>操作</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for room in owned_rooms %}
-          <tr>
-            <td>{{ room.name }}</td>
-            <td>{{ room.code }}</td>
-            <td>
-              <span class="status-badge {{ 'active' if room.is_active else 'closed' }}">
-                {{ '开放' if room.is_active else '已关闭' }}
-              </span>
-            </td>
-            <td>{{ room.created_at.strftime('%Y-%m-%d %H:%M') if room.created_at else '' }}</td>
-            <td class="actions">
-              <a class="primary-btn" href="{{ url_for('main.room_detail', code=room.code) }}">进入</a>
-              <form method="post" action="{{ url_for('main.delete_room', code=room.code) }}" onsubmit="return confirm('删除后房间号将失效，确认删除？');">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-                <button type="submit" class="danger-btn">删除</button>
-              </form>
-            </td>
-          </tr>
-        {% else %}
-          <tr><td colspan="5">暂未创建房间</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+<section class="section-wrapper">
+  <div class="section-header-modern">
+    <h1><i class="ri-home-heart-line"></i> 我管理的房间</h1>
+    <p>作为房主，你可以随时管理这些房间的开放状态。</p>
+  </div>
+
+  <div class="room-card-grid">
+    {% for room in owned_rooms %}
+      <div class="room-card {{ 'active' if room.is_active else 'closed' }}">
+        <div class="card-top-decoration"></div>
+        <div class="room-card-body">
+          <div class="room-card-header">
+            <h3 class="room-name" title="{{ room.name }}">{{ room.name }}</h3>
+            <div class="room-code-badge">#{{ room.code }}</div>
+          </div>
+
+          <div class="room-card-meta">
+            <div class="meta-item">
+              <i class="ri-time-line"></i> 创建于 {{ room.created_at.strftime('%Y-%m-%d') }}
+            </div>
+            <div class="meta-item status">
+              <span class="status-dot"></span>
+              {{ '营业中' if room.is_active else '已打烊' }}
+            </div>
+          </div>
+
+          <div class="room-card-actions">
+            <a href="{{ url_for('main.room_detail', code=room.code) }}" class="card-btn primary">
+              <i class="ri-login-box-line"></i> 进入管理
+            </a>
+            <form method="post" action="{{ url_for('main.delete_room', code=room.code) }}" onsubmit="return confirm('确认要解散这个房间吗？解散后房间号将失效。');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+              <button type="submit" class="card-btn icon-only danger" title="解散房间">
+                <i class="ri-delete-bin-line"></i>
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <div class="empty-card-placeholder">
+        <div class="placeholder-icon"><i class="ri-add-box-line"></i></div>
+        <p>你还没有创建任何房间</p>
+        <a href="{{ url_for('main.dashboard') }}" class="link-text">去创建一个</a>
+      </div>
+    {% endfor %}
   </div>
 </section>
 
-<section class="grid-card">
-  <h1>我加入的房间</h1>
-  <p>快速回到最近参与过的房间，无需再次输入房间号。</p>
-  <div class="table-scroll">
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>房间名</th>
-          <th>房间号</th>
-          <th>加入时间</th>
-          <th>状态</th>
-          <th>操作</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for membership in memberships %}
-          <tr>
-            <td>{{ membership.room.name }}</td>
-            <td>{{ membership.room.code }}</td>
-            <td>{{ membership.joined_at.strftime('%Y-%m-%d %H:%M') }}</td>
-            <td>
-              <span class="status-badge {{ 'active' if membership.room.is_active else 'closed' }}">
-                {{ '开放' if membership.room.is_active else '已关闭' }}
-              </span>
-            </td>
-            <td class="actions">
-              {% if membership.room.is_active %}
-                <a class="primary-btn" href="{{ url_for('main.room_detail', code=membership.room.code) }}">进入</a>
-              {% else %}
-                <button class="secondary-btn" disabled>待房主开放</button>
-              {% endif %}
-              <form method="post" action="{{ url_for('main.leave_room', code=membership.room.code) }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-                <button type="submit" class="link-btn">退出</button>
-              </form>
-            </td>
-          </tr>
-        {% else %}
-          <tr><td colspan="5">暂未加入其他房间</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+<div class="divider-line"></div>
+
+<section class="section-wrapper">
+  <div class="section-header-modern">
+    <h1><i class="ri-group-line"></i> 我加入的房间</h1>
+    <p>这里记录了你访问过的其他房间。</p>
+  </div>
+
+  <div class="room-card-grid">
+    {% for membership in memberships %}
+      <div class="room-card guest {{ 'active' if membership.room.is_active else 'closed' }}">
+        <div class="room-card-body">
+          <div class="room-card-header">
+            <h3 class="room-name">{{ membership.room.name }}</h3>
+            <div class="room-code-badge">#{{ membership.room.code }}</div>
+          </div>
+
+          <div class="room-card-meta">
+            <div class="meta-item">
+              <i class="ri-user-star-line"></i> 房主: {{ membership.room.owner.nickname or '神秘房主' }}
+            </div>
+            <div class="meta-item status">
+              <span class="status-dot"></span>
+              {{ '开放中' if membership.room.is_active else '休息中' }}
+            </div>
+          </div>
+
+          <div class="room-card-actions">
+            {% if membership.room.is_active %}
+              <a href="{{ url_for('main.room_detail', code=membership.room.code) }}" class="card-btn secondary">
+                <i class="ri-arrow-right-line"></i> 立即进入
+              </a>
+            {% else %}
+              <button class="card-btn disabled" disabled>
+                <i class="ri-lock-line"></i> 暂时无法进入
+              </button>
+            {% endif %}
+
+            <form method="post" action="{{ url_for('main.leave_room', code=membership.room.code) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+              <button type="submit" class="card-btn text-danger">退出</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <div class="empty-card-placeholder">
+        <div class="placeholder-icon"><i class="ri-compass-3-line"></i></div>
+        <p>暂未加入其他房间</p>
+      </div>
+    {% endfor %}
   </div>
 </section>
 {% endblock %}
-

@@ -497,3 +497,29 @@ def delete_from_playlist(code):
             db.session.delete(entry)
             db.session.commit()
     return jsonify({"status": "success"})
+
+
+# [新增] 删除听歌记录路由
+@main_bp.route("/records/listen/<int:record_id>/delete", methods=["POST"])
+@login_required
+def delete_listen_record(record_id):
+    if current_user.is_admin:
+        abort(403)
+    record = ListenRecord.query.filter_by(id=record_id, user_id=current_user.id).first_or_404()
+    db.session.delete(record)
+    db.session.commit()
+    flash("听歌记录已删除", "success")
+    return redirect(url_for("main.records"))
+
+
+# [新增] 删除房间参与记录路由
+@main_bp.route("/records/room/<int:record_id>/delete", methods=["POST"])
+@login_required
+def delete_room_record(record_id):
+    if current_user.is_admin:
+        abort(403)
+    record = RoomParticipationRecord.query.filter_by(id=record_id, user_id=current_user.id).first_or_404()
+    db.session.delete(record)
+    db.session.commit()
+    flash("访客记录已删除", "success")
+    return redirect(url_for("main.records"))

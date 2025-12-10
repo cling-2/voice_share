@@ -2,19 +2,7 @@
 {% block title %}房间 {{ room.code }}{% endblock %}
 
 {% block content %}
-<!--<div class="room-text">-->
-<!--  <h1 class="room-name">{{ room.name }}</h1>-->
-<!--  <p class="room-meta">-->
-<!--    <i class="ri-user-star-line"></i> 房主: {{ room.owner.nickname or room.owner.username }}-->
-<!--    <span class="dot">·</span>-->
 
-<!--    <i class="ri-group-line" style="margin-left: 0.5rem;"></i>-->
-<!--    <span id="member-count-display">{{ member_count }}</span>人在线-->
-<!--    <span class="dot">·</span>-->
-
-<!--    <span class="status-indicator {{ 'active' if room.is_active else 'closed' }}">{{ '正在营业' if room.is_active else '已打烊' }}</span>-->
-<!--  </p>-->
-<!--</div>-->
 
 <div class="room-page-container">
   <header class="room-top-bar">
@@ -32,23 +20,31 @@
         </p>
       </div>
     </div>
-    <div class="room-actions-group">
+<div class="room-actions-group">
       {% if is_owner %}
         <form method="post" action="{{ url_for('main.room_availability', code=room.code) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
           <input type="hidden" name="action" value="{{ 'close' if room.is_active else 'open' }}" />
-          <button type="submit" class="action-btn {{ 'outline' if room.is_active else 'primary' }}">
-            <i class="{{ 'ri-lock-2-line' if room.is_active else 'ri-lock-unlock-line' }}"></i> {{ '暂时关闭' if room.is_active else '重新开放' }}
+          <button type="submit" class="modern-action-btn {{ 'outline' if room.is_active else 'primary-gradient' }}">
+            <i class="{{ 'ri-lock-2-line' if room.is_active else 'ri-lock-unlock-line' }}"></i>
+            <span>{{ '暂时关闭' if room.is_active else '重新开放' }}</span>
           </button>
         </form>
-        <form method="post" action="{{ url_for('main.delete_room', code=room.code) }}" onsubmit="return confirm('确认解散？');">
+
+        <form method="post" action="{{ url_for('main.delete_room', code=room.code) }}" onsubmit="return confirm('确认解散？此操作不可逆！');">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-          <button type="submit" class="action-btn danger"><i class="ri-delete-bin-5-line"></i> 解散</button>
+          <button type="submit" class="modern-action-btn danger-ghost" title="解散房间">
+            <i class="ri-delete-bin-5-line"></i>
+            <span>解散房间</span>
+          </button>
         </form>
       {% else %}
         <form method="post" action="{{ url_for('main.leave_room', code=room.code) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-          <button type="submit" class="action-btn outline"><i class="ri-logout-box-r-line"></i> 退出</button>
+          <button type="submit" class="modern-action-btn outline-danger">
+            <i class="ri-logout-box-r-line"></i>
+            <span>退出房间</span>
+          </button>
         </form>
       {% endif %}
     </div>
