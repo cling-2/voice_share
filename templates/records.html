@@ -1,0 +1,47 @@
+{% extends "layout.html" %}
+{% block title %}我的记录{% endblock %}
+
+{% block content %}
+<section class="grid-card">
+  <h1>近 30 天听歌记录</h1>
+  <div class="table-scroll">
+    <table class="data-table">
+      <thead>
+        <tr><th>歌曲名</th><th>播放时间</th></tr>
+      </thead>
+      <tbody>
+        {% for record in listen_records %}
+          <tr>
+            <td>{{ record.song_name }}</td>
+            <td>{{ record.played_at.strftime('%Y-%m-%d %H:%M') }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="2">暂无记录</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="grid-card">
+  <h1>近 30 天房间参与记录</h1>
+  <div class="table-scroll">
+    <table class="data-table">
+      <thead>
+        <tr><th>房间号</th><th>参与时间</th></tr>
+      </thead>
+      <tbody>
+        {% for record in room_records %}
+          <tr>
+            <td>{{ record.room_code }}</td>
+            <td>{{ record.participated_at.strftime('%Y-%m-%d %H:%M') }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="2">暂无记录</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+

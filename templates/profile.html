@@ -1,0 +1,27 @@
+{% extends "layout.html" %}
+{% block title %}个人资料{% endblock %}
+
+{% block content %}
+<section class="grid-card">
+  <h1>个人信息管理</h1>
+  <p>昵称最长 10 个字符，头像仅支持本地图片，修改后立即生效。</p>
+  <form method="post" enctype="multipart/form-data">
+    {{ form.hidden_tag() }}
+    <label>{{ form.nickname.label }}{{ form.nickname(class="input") }}</label>
+    {% for error in form.nickname.errors %}
+      <div class="error">{{ error }}</div>
+    {% endfor %}
+
+    <label class="file-input-label">
+      <span>{{ form.avatar.label.text }}</span>
+      {{ form.avatar(class="input") }}
+    </label>
+    {% for error in form.avatar.errors %}
+      <div class="error">{{ error }}</div>
+    {% endfor %}
+
+    <button type="submit" class="primary-btn">保存修改</button>
+  </form>
+</section>
+{% endblock %}
+

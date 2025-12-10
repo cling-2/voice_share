@@ -1,0 +1,47 @@
+{% extends "layout.html" %}
+{% block title %}{{ '管理员' if page == 'admin' else '用户' }}注册{% endblock %}
+
+{% block content %}
+<section class="auth-card">
+  <h1>{{ '管理员账号注册' if page == 'admin' else '创建你的账号' }}</h1>
+  <form method="post">
+    {{ form.hidden_tag() }}
+    <label>{{ form.username.label }}{{ form.username(class="input", placeholder="4-32 位字母/数字/下划线；管理员以 admin_ 开头") }}</label>
+    {% for error in form.username.errors %}
+      <div class="error">{{ error }}</div>
+    {% endfor %}
+
+    {% if form.role.type != 'HiddenField' %}
+      <label>{{ form.role.label }}{{ form.role(class="input") }}</label>
+    {% else %}
+      {{ form.role() }}
+    {% endif %}
+    {% for error in form.role.errors %}
+      <div class="error">{{ error }}</div>
+    {% endfor %}
+
+    <label>{{ form.password.label }}{{ form.password(class="input", placeholder="6-64 位，建议包含字母与数字") }}</label>
+    {% for error in form.password.errors %}
+      <div class="error">{{ error }}</div>
+    {% endfor %}
+
+    <label>{{ form.confirm_password.label }}{{ form.confirm_password(class="input", placeholder="再次输入上方密码") }}</label>
+    {% for error in form.confirm_password.errors %}
+      <div class="error">{{ error }}</div>
+    {% endfor %}
+
+    <div class="slider-verify" data-target="{{ form.slider_token.id }}">
+      <div class="slider-track">
+        <div class="slider-thumb">↔</div>
+        <span class="slider-tip">拖动滑块完成验证</span>
+      </div>
+    </div>
+    {% for error in form.slider_token.errors %}
+      <div class="error">{{ error }}</div>
+    {% endfor %}
+
+    <button type="submit" class="primary-btn">注册</button>
+  </form>
+</section>
+{% endblock %}
+

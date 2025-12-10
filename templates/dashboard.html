@@ -1,0 +1,40 @@
+{% extends "layout.html" %}
+{% block title %}系统首页{% endblock %}
+
+{% block content %}
+<section class="grid-card">
+  <h1>你好，{{ current_user.nickname or current_user.username }}</h1>
+  <p class="subtitle">首页仅展示核心入口，快速完成一天的共听行程。</p>
+  <div class="entry-grid">
+    <div class="entry">
+      <h2>创建房间</h2>
+      <p>一键生成私密 6 位房间号，默认随机房名，可随时修改。</p>
+      <form method="post" action="{{ url_for('main.create_room') }}">
+        {{ room_form.hidden_tag() }}
+        {{ room_form.name(class="input", placeholder="输入房间名称，默认随机") }}
+        <button type="submit" class="primary-btn">创建房间</button>
+      </form>
+    </div>
+    <div class="entry">
+      <h2>我的音乐</h2>
+      <p>上传 MP3（≤50MB），进入审核后自动同步个人音乐库。</p>
+      <a class="secondary-btn" href="{{ url_for('main.music') }}">进入我的音乐</a>
+    </div>
+    <div class="entry">
+      <h2>我的记录</h2>
+      <p>自动保存近 30 天听歌记录与房间参与记录，随时查看。</p>
+      <a class="secondary-btn" href="{{ url_for('main.records') }}">查看记录</a>
+    </div>
+  </div>
+</section>
+
+<section class="grid-card">
+  <h2>加入好友房间</h2>
+  <form method="post" action="{{ url_for('main.join_room') }}" class="join-form">
+    {{ join_form.hidden_tag() }}
+    {{ join_form.code(class="input", placeholder="输入 6 位房间号") }}
+    <button type="submit" class="primary-btn">加入房间</button>
+  </form>
+</section>
+{% endblock %}
+

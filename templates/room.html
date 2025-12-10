@@ -1,0 +1,145 @@
+{% extends "layout.html" %}
+{% block title %}房间 {{ room.code }}{% endblock %}
+
+{% block content %}
+<section class="grid-card room-header" data-room="{{ room.code }}">
+  <div class="room-header-info">
+    <h1>{{ room.name }} · {{ room.code }}</h1>
+    <p>房间类型：私密 · 主控：{{ room.owner.nickname or room.owner.username }}</p>
+    <p>房间状态：
+      <span id="room-status" class="status-badge {{ 'active' if room.is_active else 'closed' }}">
+        {{ '开放' if room.is_active else '已关闭' }}
+      </span>
+      <small>房间号可重复使用，除非房主主动关闭</small>
+    </p>
+  </div>
+  <div class="room-header-actions">
+    <div class="playback-status">当前播放：<span id="state-label">{{ '播放中' if room.playback_status == 'playing' else '已暂停' }}</span></div>
+    {% if is_owner %}
+      <form method="post" action="{{ url_for('main.room_availability', code=room.code) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <input type="hidden" name="action" value="{{ 'close' if room.is_active else 'open' }}" />
+        <button type="submit" class="{{ 'secondary-btn' if room.is_active else 'primary-btn' }}">
+          {{ '关闭房间' if room.is_active else '重新开放' }}
+        </button>
+      </form>
+      <form method="post" action="{{ url_for('main.delete_room', code=room.code) }}" onsubmit="return confirm('确认删除该房间？房间号将不可再使用。');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <button type="submit" class="danger-btn">删除房间</button>
+      </form>
+    {% else %}
+      <form method="post" action="{{ url_for('main.leave_room', code=room.code) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <button type="submit" class="secondary-btn">退出房间</button>
+      </form>
+    {% endif %}
+  </div>
+</section>
+
+{% if not room.is_active %}
+  <div class="room-alert">
+    房间已关闭，仅房主可查看和管理。好友需要房主重新开放后才能再次进入。
+  </div>
+{% endif %}
+
+<section class="grid-card">
+  <div class="room-flex">
+    <div class="player-panel">
+      <h2>房间播放器</h2>
+      <audio id="room-audio" controls preload="auto">
+        {% if room.current_track_file %}
+          <source src="{{ url_for('static', filename='uploads/music/' + room.current_track_file) }}" type="audio/mpeg" />
+        {% endif %}
+        您的浏览器不支持音频播放
+      </audio>
+      {% if is_owner %}
+        <form method="post" action="{{ url_for('main.toggle_playback', code=room.code) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <label>选择歌曲
+            <select name="track_id" class="input">
+              <option value="">保留当前歌曲</option>
+              {% for item in playlist %}
+                <option value="{{ item.id }}">{{ item.title }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <div class="button-row">
+            <button class="primary-btn" name="action" value="play">播放并同步</button>
+            <button class="secondary-btn" name="action" value="pause">暂停</button>
+          </div>
+        </form>
+      {% else %}
+        <p>该房间仅创建者可切歌、暂停。请耐心等待同步。</p>
+      {% endif %}
+      <p class="current-track" id="current-track-label">
+        {% if room.current_track_name %}正在播放：{{ room.current_track_name }}{% else %}暂无播放{% endif %}
+      </p>
+
+      <div class="upload-inline-card">
+        <h3>房间内快速上传音乐</h3>
+        <p>支持 MP3（≤50MB），上传后进入个人音乐库待审核，通过后可在房间播放。</p>
+        <form method="post" action="{{ url_for('main.room_upload_music', code=room.code) }}" enctype="multipart/form-data">
+          {{ upload_form.hidden_tag() }}
+          <label>
+            <span class="music-title-badge">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M9 18V5l10-2v13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="6" cy="18" r="3" stroke="currentColor" stroke-width="2"/>
+                <circle cx="17" cy="16" r="3" stroke="currentColor" stroke-width="2"/>
+              </svg>
+              {{ upload_form.title.label.text }}
+            </span>
+            {{ upload_form.title(class="input", placeholder="选择文件后自动识别名称，可调整") }}
+          </label>
+          {% for error in upload_form.title.errors %}
+            <div class="error">{{ error }}</div>
+          {% endfor %}
+          <label class="file-input-label">
+            <span>选择 MP3 文件</span>
+            {{ upload_form.file(class="input", **{'data-autofill-target': upload_form.title.id}) }}
+          </label>
+          {% for error in upload_form.file.errors %}
+            <div class="error">{{ error }}</div>
+          {% endfor %}
+          <button type="submit" class="primary-btn">上传音乐</button>
+        </form>
+      </div>
+    </div>
+    <div class="chat-panel">
+      <h2>房间评论</h2>
+      <div class="chat-log" id="chat-log">
+        {% for message in messages %}
+          <div class="chat-item">
+            <img src="{{ message.author.avatar_url }}" alt="avatar" class="chat-avatar" />
+            <div class="chat-item-content">
+              <strong>{{ message.author.nickname or message.author.username }}</strong>
+              <span>{{ message.created_at.strftime('%H:%M:%S') }}</span>
+              <p>{{ message.content }}</p>
+            </div>
+          </div>
+        {% else %}
+          <p>暂时没有评论</p>
+        {% endfor %}
+      </div>
+      <form method="post" action="{{ url_for('main.send_message', code=room.code) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <textarea name="content" class="input" rows="3" placeholder="说点什么吧"></textarea>
+        <button class="primary-btn" type="submit">发送评论</button>
+      </form>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block body_extra %}
+<script>
+  window.roomConfig = {
+    code: "{{ room.code }}",
+    isOwner: {{ 'true' if is_owner else 'false' }},
+    isActive: {{ 'true' if room.is_active else 'false' }},
+    audioSelector: "#room-audio",
+    stateUrl: "{{ url_for('main.room_state', code=room.code) }}"
+  };
+</script>
+{% endblock %}
+

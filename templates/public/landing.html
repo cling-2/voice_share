@@ -1,0 +1,12 @@
+{% extends "layout.html" %}
+{% block content %}
+<section class="hero">
+  <h1>5 分钟完成注册、建房、上传、播放、互动</h1>
+  <p>一站式共享听歌房，拖动滑块即可注册，房间控制权始终掌握在你手中。</p>
+  <div class="hero-actions">
+    <a class="primary-btn" href="{{ url_for('auth.register') }}">立即注册</a>
+    <a class="secondary-btn" href="{{ url_for('auth.login') }}">已有账号登录</a>
+  </div>
+</section>
+{% endblock %}
+

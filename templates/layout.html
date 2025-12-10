@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}共享听歌房{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.css" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
+    {% block head_extra %}{% endblock %}
+  </head>
+  <body>
+    <nav class="top-nav">
+      <div class="brand">VoiceShare</div>
+      <div class="nav-actions">
+        {% if current_user.is_authenticated %}
+          {% if current_user.is_admin %}
+            <a href="{{ url_for('admin.dashboard') }}">审核后台</a>
+          {% else %}
+            <div class="user-mini-card">
+              <img src="{{ current_user.avatar_url }}" alt="avatar" class="mini-avatar" />
+              <div class="user-meta">
+                <div class="user-name">{{ current_user.nickname or '新用户' }}</div>
+                <small class="user-sub">{{ current_user.username }}</small>
+              </div>
+            </div>
+            <a href="{{ url_for('main.dashboard') }}">首页</a>
+            <a href="{{ url_for('main.my_rooms') }}">我的房间</a>
+            <a href="{{ url_for('main.music') }}">我的音乐</a>
+            <a href="{{ url_for('main.records') }}">我的记录</a>
+            <a href="{{ url_for('main.profile') }}">个人资料</a>
+          {% endif %}
+          <form method="post" action="{{ url_for('auth.logout') }}" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <button type="submit" class="link-btn">退出</button>
+          </form>
+        {% else %}
+          <a href="{{ url_for('auth.login') }}">用户登录</a>
+          <a href="{{ url_for('auth.register') }}">用户注册</a>
+          <a href="{{ url_for('auth.admin_login') }}">管理员登录</a>
+        {% endif %}
+      </div>
+    </nav>
+
+    <main>
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="flash-group">
+            {% for category, message in messages %}
+              <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </main>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block body_extra %}{% endblock %}
+  </body>
+</html>
+

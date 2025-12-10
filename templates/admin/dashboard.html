@@ -1,0 +1,67 @@
+{% extends "layout.html" %}
+{% block title %}后台审核{% endblock %}
+
+{% block content %}
+<section class="grid-card">
+  <h1>待审核音乐列表</h1>
+  <div class="table-scroll">
+    <table class="data-table">
+      <thead>
+        <tr><th>上传用户</th><th>文件名</th><th>上传时间</th><th>操作</th></tr>
+      </thead>
+      <tbody>
+        {% for item in pending %}
+          <tr>
+            <td>{{ item.owner.username }}</td>
+            <td>
+              <div>{{ item.title }}</div>
+              <small class="muted">{{ item.original_filename }}</small>
+            </td>
+            <td>{{ item.uploaded_at.strftime('%Y-%m-%d %H:%M') }}</td>
+            <td class="actions">
+              <form method="post" action="{{ url_for('admin.approve_music', music_id=item.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <button class="primary-btn" type="submit">通过</button>
+              </form>
+              <form method="post" action="{{ url_for('admin.reject_music', music_id=item.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <input class="input" name="reason" placeholder="可选备注" />
+                <button class="secondary-btn" type="submit">驳回</button>
+              </form>
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="4">暂无待审核音乐</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="grid-card">
+  <h1>违规音乐列表</h1>
+  <div class="table-scroll">
+    <table class="data-table">
+      <thead>
+        <tr><th>上传用户</th><th>文件名</th><th>处理时间</th><th>备注</th></tr>
+      </thead>
+      <tbody>
+        {% for item in rejected %}
+          <tr>
+            <td>{{ item.owner.username }}</td>
+            <td>
+              <div>{{ item.title }}</div>
+              <small class="muted">{{ item.original_filename }}</small>
+            </td>
+            <td>{{ item.updated_at.strftime('%Y-%m-%d %H:%M') if item.updated_at else '' }}</td>
+            <td>{{ item.rejection_reason or '涉嫌违规' }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="4">暂无违规记录</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+
