@@ -189,6 +189,12 @@ select {
   padding: 0.75rem 1.5rem;
   cursor: pointer;
   font-weight: 600;
+  text-decoration: none;
+}
+
+.small-btn {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
 }
 
 .primary-btn {
@@ -329,15 +335,6 @@ select {
   margin-top: 0.5rem;
 }
 
-.upload-inline-card {
-  margin-top: 1.5rem;
-  padding: 1rem;
-  border: 1px dashed var(--border);
-  border-radius: 12px;
-  background: #fafafa;
-  max-width: 520px;
-}
-
 .player-panel,
 .chat-panel {
   flex: 1 1 320px;
@@ -443,6 +440,84 @@ select {
   max-width: 320px;
 }
 
+/* New Room Styles */
+.now-playing-card {
+    text-align: center;
+    background: linear-gradient(135deg, #fff, #f8faff);
+}
+
+.current-track-title {
+    font-size: 2.5rem;
+    margin: 0.5rem 0 1rem;
+    color: var(--brand);
+    font-weight: 800;
+}
+
+.playing-label {
+    font-size: 0.9rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.playback-status-badge {
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+    color: var(--muted);
+}
+
+.full-width-audio {
+    width: 100%;
+    margin-bottom: 1rem;
+}
+
+.playlist-container {
+    max-height: 250px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+}
+
+.active-row {
+    background-color: #f0fdf4;
+    font-weight: 600;
+}
+
+.my-library-panel {
+    border-top: 2px dashed var(--border);
+    padding-top: 1.5rem;
+}
+
+.scroll-list {
+    max-height: 200px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.library-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem;
+    background: #fafafa;
+    border-radius: 6px;
+}
+
+.hint-text {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-top: 0.5rem;
+}
+
+.host-controls {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+}
+
 @media (max-width: 640px) {
   .nav-actions {
     flex-direction: column;
@@ -465,5 +540,7 @@ select {
   .join-form {
     flex-direction: column;
   }
+  .current-track-title {
+      font-size: 1.8rem;
+  }
 }
-

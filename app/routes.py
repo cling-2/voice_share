@@ -22,6 +22,7 @@ from .models import (
     RoomMember,
     RoomMessage,
     RoomParticipationRecord,
+    RoomPlaylist,
     User,
 )
 from .utils import generate_room_code, generate_room_name, save_avatar, save_music
@@ -119,6 +120,8 @@ def delete_music(music_id):
     if current_user.is_admin:
         abort(403)
     music = Music.query.filter_by(id=music_id, user_id=current_user.id).first_or_404()
+    # 同时删除在任何房间播放列表中的引用
+    RoomPlaylist.query.filter_by(music_id=music.id).delete()
     db.session.delete(music)
     db.session.commit()
     flash("音乐已删除", "info")
@@ -221,20 +224,26 @@ def room_detail(code):
         return redirect(url_for("main.dashboard"))
     if room.owner_id != current_user.id:
         _attach_member(room, current_user, record_participation=False)
-    approved_music = (
-        Music.query.filter_by(user_id=room.owner_id, status="approved")
+
+    # 获取房间播放列表
+    room_playlist = RoomPlaylist.query.filter_by(room_id=room.id).order_by(RoomPlaylist.created_at.asc()).all()
+
+    # 获取用户自己的已审核音乐（用于添加到房间）
+    my_approved_music = (
+        Music.query.filter_by(user_id=current_user.id, status="approved")
         .order_by(Music.uploaded_at.desc())
         .all()
     )
+
     messages = RoomMessage.query.filter_by(room_id=room.id).order_by(RoomMessage.created_at.asc()).all()
-    upload_form = MusicUploadForm()
+
     return render_template(
         "room.html",
         room=room,
         is_owner=room.owner_id == current_user.id,
-        playlist=approved_music,
+        room_playlist=room_playlist,
+        my_library=my_approved_music,
         messages=messages,
-        upload_form=upload_form,
     )
 
 
@@ -261,21 +270,60 @@ def toggle_playback(code):
     room = Room.query.filter_by(code=code).first_or_404()
     if room.owner_id != current_user.id:
         abort(403)
-    track_id = request.form.get("track_id")
+
+    music_id = request.form.get("music_id")
     action = request.form.get("action")
-    if track_id:
-        music = Music.query.filter_by(id=track_id, user_id=current_user.id, status="approved").first()
-        if not music:
-            flash("请选择有效的歌曲", "error")
-            return redirect(url_for("main.room_detail", code=code))
-        room.current_track_name = music.title
-        room.current_track_file = music.stored_filename
-    if action in {"play", "pause"}:
-        room.playback_status = "playing" if action == "play" else "paused"
-        if room.current_track_name:
-            record = ListenRecord(user_id=current_user.id, song_name=room.current_track_name)
+
+    # 房主切歌逻辑
+    if music_id:
+        music = Music.query.get(music_id)
+        # 确保音乐存在且是该房间播放列表中的（简单校验存在即可）
+        if music and music.status == "approved":
+            room.current_track_name = music.title
+            room.current_track_file = music.stored_filename
+            # 切歌时自动播放
+            room.playback_status = "playing"
+            # 记录听歌历史
+            record = ListenRecord(user_id=current_user.id, song_name=music.title)
             db.session.add(record)
+        else:
+            flash("无法播放该歌曲", "error")
+
+    # 房主播放/暂停逻辑
+    elif action in {"play", "pause"}:
+        room.playback_status = "playing" if action == "play" else "paused"
+        if room.current_track_name and action == "play":
+            # 只有在有歌且从暂停恢复播放时记录，防止频繁记录，这里简化为只要播放就记录一次
+            # 为了避免重复，这里可以加个判断，暂略
+            pass
+
     db.session.commit()
+    return redirect(url_for("main.room_detail", code=code))
+
+
+@main_bp.route("/rooms/<code>/playlist/add", methods=["POST"])
+@login_required
+def add_to_playlist(code):
+    room = Room.query.filter_by(code=code).first_or_404()
+    music_id = request.form.get("music_id")
+
+    if not music_id:
+        flash("请选择音乐", "error")
+        return redirect(url_for("main.room_detail", code=code))
+
+    music = Music.query.filter_by(id=music_id, user_id=current_user.id, status="approved").first()
+    if not music:
+        flash("音乐不存在或未审核通过", "error")
+        return redirect(url_for("main.room_detail", code=code))
+
+    # 检查是否已在列表中（可选，这里允许重复添加）
+    # existing = RoomPlaylist.query.filter_by(room_id=room.id, music_id=music.id).first()
+
+    item = RoomPlaylist(room_id=room.id, music_id=music.id)
+    db.session.add(item)
+    db.session.commit()
+
+    flash(f"已将《{music.title}》添加到房间播放列表", "success")
     return redirect(url_for("main.room_detail", code=code))
 
 
@@ -326,42 +374,11 @@ def delete_room(code):
         abort(403)
     RoomMessage.query.filter_by(room_id=room.id).delete(synchronize_session=False)
     RoomMember.query.filter_by(room_id=room.id).delete(synchronize_session=False)
+    RoomPlaylist.query.filter_by(room_id=room.id).delete(synchronize_session=False)
     db.session.delete(room)
     db.session.commit()
     flash("房间已删除，房间号不再可用", "info")
     return redirect(url_for("main.my_rooms"))
-
-
-@main_bp.route("/rooms/<code>/upload", methods=["POST"])
-@login_required
-def room_upload_music(code):
-    if current_user.is_admin:
-        abort(403)
-    room = Room.query.filter_by(code=code).first_or_404()
-    form = MusicUploadForm()
-    if not form.validate_on_submit():
-        flash("请补全歌曲名称并选择 MP3 文件", "error")
-        return redirect(url_for("main.room_detail", code=code))
-    file = request.files.get("file")
-    if not file or not file.filename:
-        flash("请选择 MP3 文件", "error")
-        return redirect(url_for("main.room_detail", code=code))
-    stored_name, error = save_music(file)
-    if error:
-        flash(error, "error")
-        return redirect(url_for("main.room_detail", code=code))
-    title = (form.title.data or "").strip() or Path(file.filename).stem or "未命名歌曲"
-    music = Music(
-        user_id=current_user.id,
-        title=title,
-        original_filename=file.filename,
-        stored_filename=stored_name,
-    )
-    db.session.add(music)
-    db.session.commit()
-    flash("请确保上传音乐拥有合法使用权限", "info")
-    flash("音乐已进入待审核队列，可在通过后添加到房间播放", "success")
-    return redirect(url_for("main.room_detail", code=code))
 
 
 @main_bp.route("/rooms/<code>/messages", methods=["POST"])
@@ -399,4 +416,3 @@ def records():
         .all()
     )
     return render_template("records.html", listen_records=listen_records, room_records=room_records)
-

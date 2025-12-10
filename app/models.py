@@ -71,6 +71,17 @@ class Room(TimestampMixin, db.Model):
 
     owner = db.relationship("User", backref="rooms")
     members = db.relationship("RoomMember", backref="room", lazy=True)
+    # 新增 playlist 关系
+    playlist = db.relationship("RoomPlaylist", backref="room", lazy=True, cascade="all, delete-orphan")
+
+
+class RoomPlaylist(TimestampMixin, db.Model):
+    """房间播放列表"""
+    id = db.Column(db.Integer, primary_key=True)
+    room_id = db.Column(db.Integer, db.ForeignKey("room.id"), nullable=False)
+    music_id = db.Column(db.Integer, db.ForeignKey("musics.id"), nullable=False)
+
+    music = db.relationship("Music")
 
 
 class RoomMessage(TimestampMixin, db.Model):
@@ -112,4 +123,3 @@ class RoomParticipationRecord(db.Model):
     participated_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     user = db.relationship("User", backref="room_participations")
-

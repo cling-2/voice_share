@@ -14,7 +14,6 @@
     </p>
   </div>
   <div class="room-header-actions">
-    <div class="playback-status">当前播放：<span id="state-label">{{ '播放中' if room.playback_status == 'playing' else '已暂停' }}</span></div>
     {% if is_owner %}
       <form method="post" action="{{ url_for('main.room_availability', code=room.code) }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
@@ -42,69 +41,96 @@
   </div>
 {% endif %}
 
-<section class="grid-card">
-  <div class="room-flex">
-    <div class="player-panel">
-      <h2>房间播放器</h2>
-      <audio id="room-audio" controls preload="auto">
+<section class="grid-card now-playing-card">
+  <div class="now-playing-content">
+    <div class="playing-label">正在播放</div>
+    <h1 class="current-track-title" id="current-track-label">
+        {% if room.current_track_name %}{{ room.current_track_name }}{% else %}暂无播放{% endif %}
+    </h1>
+    <div class="playback-status-badge">
+        状态：<span id="state-label">{{ '播放中' if room.playback_status == 'playing' else '已暂停' }}</span>
+    </div>
+  </div>
+
+  <div class="audio-controller">
+      <audio id="room-audio" controls preload="auto" class="full-width-audio">
         {% if room.current_track_file %}
           <source src="{{ url_for('static', filename='uploads/music/' + room.current_track_file) }}" type="audio/mpeg" />
         {% endif %}
         您的浏览器不支持音频播放
       </audio>
       {% if is_owner %}
-        <form method="post" action="{{ url_for('main.toggle_playback', code=room.code) }}">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-          <label>选择歌曲
-            <select name="track_id" class="input">
-              <option value="">保留当前歌曲</option>
-              {% for item in playlist %}
-                <option value="{{ item.id }}">{{ item.title }}</option>
-              {% endfor %}
-            </select>
-          </label>
-          <div class="button-row">
-            <button class="primary-btn" name="action" value="play">播放并同步</button>
-            <button class="secondary-btn" name="action" value="pause">暂停</button>
-          </div>
-        </form>
+        <div class="host-controls">
+            <form method="post" action="{{ url_for('main.toggle_playback', code=room.code) }}" class="inline-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                {% if room.playback_status == 'playing' %}
+                    <button class="secondary-btn" name="action" value="pause">暂停全员</button>
+                {% else %}
+                    <button class="primary-btn" name="action" value="play">播放全员</button>
+                {% endif %}
+            </form>
+        </div>
       {% else %}
-        <p>该房间仅创建者可切歌、暂停。请耐心等待同步。</p>
+        <p class="hint-text">你可以自由调整本地进度，但切歌和暂停由房主控制。</p>
       {% endif %}
-      <p class="current-track" id="current-track-label">
-        {% if room.current_track_name %}正在播放：{{ room.current_track_name }}{% else %}暂无播放{% endif %}
-      </p>
+  </div>
+</section>
 
-      <div class="upload-inline-card">
-        <h3>房间内快速上传音乐</h3>
-        <p>支持 MP3（≤50MB），上传后进入个人音乐库待审核，通过后可在房间播放。</p>
-        <form method="post" action="{{ url_for('main.room_upload_music', code=room.code) }}" enctype="multipart/form-data">
-          {{ upload_form.hidden_tag() }}
-          <label>
-            <span class="music-title-badge">
-              <svg viewBox="0 0 24 24" fill="none">
-                <path d="M9 18V5l10-2v13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                <circle cx="6" cy="18" r="3" stroke="currentColor" stroke-width="2"/>
-                <circle cx="17" cy="16" r="3" stroke="currentColor" stroke-width="2"/>
-              </svg>
-              {{ upload_form.title.label.text }}
-            </span>
-            {{ upload_form.title(class="input", placeholder="选择文件后自动识别名称，可调整") }}
-          </label>
-          {% for error in upload_form.title.errors %}
-            <div class="error">{{ error }}</div>
-          {% endfor %}
-          <label class="file-input-label">
-            <span>选择 MP3 文件</span>
-            {{ upload_form.file(class="input", **{'data-autofill-target': upload_form.title.id}) }}
-          </label>
-          {% for error in upload_form.file.errors %}
-            <div class="error">{{ error }}</div>
-          {% endfor %}
-          <button type="submit" class="primary-btn">上传音乐</button>
-        </form>
+<section class="grid-card">
+  <div class="room-flex">
+    <div class="player-panel">
+      <h2>房间播放列表</h2>
+      <p class="subtitle">房主可点击播放，所有成员可从下方个人库添加</p>
+      <div class="playlist-container">
+        <table class="data-table playlist-table">
+            <thead>
+                <tr>
+                    <th>歌曲</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in room_playlist %}
+                <tr class="{{ 'active-row' if item.music.title == room.current_track_name else '' }}">
+                    <td>{{ item.music.title }}</td>
+                    <td>
+                        {% if is_owner %}
+                            <form method="post" action="{{ url_for('main.toggle_playback', code=room.code) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                                <input type="hidden" name="music_id" value="{{ item.music.id }}" />
+                                <button type="submit" class="small-btn primary-btn">播放</button>
+                            </form>
+                        {% else %}
+                            <span class="muted">仅房主可切歌</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="2" class="muted">列表为空，请从下方添加</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+      </div>
+
+      <div class="my-library-panel">
+          <h3>从我的音乐库添加</h3>
+          <div class="scroll-list">
+              {% for music in my_library %}
+                <div class="library-item">
+                    <span class="music-name">{{ music.title }}</span>
+                    <form method="post" action="{{ url_for('main.add_to_playlist', code=room.code) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                        <input type="hidden" name="music_id" value="{{ music.id }}" />
+                        <button type="submit" class="small-btn secondary-btn">添加</button>
+                    </form>
+                </div>
+              {% else %}
+                <p class="muted">你的库中没有已过审音乐，请去“我的音乐”上传。</p>
+              {% endfor %}
+          </div>
       </div>
     </div>
+
     <div class="chat-panel">
       <h2>房间评论</h2>
       <div class="chat-log" id="chat-log">
@@ -142,4 +168,3 @@
   };
 </script>
 {% endblock %}
-
