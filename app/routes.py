@@ -207,6 +207,11 @@ def _attach_member(room: Room, user: User, *, record_participation: bool = True)
         membership = RoomMember(room_id=room.id, user_id=user.id)
         db.session.add(membership)
         created_now = True
+
+        # [新增] 插入进入房间的消息
+        join_msg = RoomMessage(room_id=room.id, user_id=user.id, content="进入了房间")
+        db.session.add(join_msg)
+
     if record_participation or created_now:
         record = RoomParticipationRecord(user_id=user.id, room_code=room.code)
         db.session.add(record)
@@ -224,7 +229,7 @@ def room_detail(code):
         return redirect(url_for("main.dashboard"))
     if room.owner_id != current_user.id:
         _attach_member(room, current_user, record_participation=False)
-
+    member_count = RoomMember.query.filter_by(room_id=room.id).count() + 1
     # 获取房间播放列表
     room_playlist = RoomPlaylist.query.filter_by(room_id=room.id).order_by(RoomPlaylist.created_at.asc()).all()
 
@@ -244,63 +249,10 @@ def room_detail(code):
         room_playlist=room_playlist,
         my_library=my_approved_music,
         messages=messages,
-    )
-
-'''
-@main_bp.route("/rooms/<code>/state")
-@login_required
-def room_state(code):
-    room = Room.query.filter_by(code=code).first_or_404()
-    if not room.is_active and room.owner_id != current_user.id:
-        abort(403)
-    return jsonify(
-        {
-            "playback_status": room.playback_status,
-            "current_track_name": room.current_track_name,
-            "current_track_file": room.current_track_file,
-            "is_active": room.is_active,
-            "updated_at": room.updated_at.isoformat() if room.updated_at else None,
-        }
+        member_count=member_count,
     )
 
 
-@main_bp.route("/rooms/<code>/toggle", methods=["POST"])
-@login_required
-def toggle_playback(code):
-    room = Room.query.filter_by(code=code).first_or_404()
-    if room.owner_id != current_user.id:
-        abort(403)
-
-    music_id = request.form.get("music_id")
-    action = request.form.get("action")
-
-    # 房主切歌逻辑
-    if music_id:
-        music = Music.query.get(music_id)
-        # 确保音乐存在且是该房间播放列表中的（简单校验存在即可）
-        if music and music.status == "approved":
-            room.current_track_name = music.title
-            room.current_track_file = music.stored_filename
-            # 切歌时自动播放
-            room.playback_status = "playing"
-            # 记录听歌历史
-            record = ListenRecord(user_id=current_user.id, song_name=music.title)
-            db.session.add(record)
-        else:
-            flash("无法播放该歌曲", "error")
-
-    # 房主播放/暂停逻辑
-    elif action in {"play", "pause"}:
-        room.playback_status = "playing" if action == "play" else "paused"
-        if room.current_track_name and action == "play":
-            # 只有在有歌且从暂停恢复播放时记录，防止频繁记录，这里简化为只要播放就记录一次
-            # 为了避免重复，这里可以加个判断，暂略
-            pass
-
-    db.session.commit()
-    return redirect(url_for("main.room_detail", code=code))
-
-'''
 
 @main_bp.route("/rooms/<code>/playlist/add", methods=["POST"])
 @login_required
@@ -337,6 +289,7 @@ def leave_room(code):
         return redirect(url_for("main.room_detail", code=code))
     membership = RoomMember.query.filter_by(room_id=room.id, user_id=current_user.id).first()
     if membership:
+        leave_msg = RoomMessage(room_id=room.id, user_id=current_user.id, content="离开了房间")
         db.session.delete(membership)
         db.session.commit()
         flash("你已退出房间，可随时再次通过房间号加入", "info")
@@ -382,19 +335,6 @@ def delete_room(code):
     return redirect(url_for("main.my_rooms"))
 
 
-# @main_bp.route("/rooms/<code>/messages", methods=["POST"])
-# @login_required
-# def send_message(code):
-#     room = Room.query.filter_by(code=code).first_or_404()
-#     content = request.form.get("content", "").strip()
-#     if not content:
-#         flash("评论内容不能为空", "error")
-#         return redirect(url_for("main.room_detail", code=code))
-#     message = RoomMessage(room_id=room.id, user_id=current_user.id, content=content)
-#     db.session.add(message)
-#     db.session.commit()
-#     flash("已发送", "success")
-#     return redirect(url_for("main.room_detail", code=code))
 
 
 @main_bp.route("/records")
@@ -419,10 +359,6 @@ def records():
     return render_template("records.html", listen_records=listen_records, room_records=room_records)
 
 
-# app/routes.py
-
-# app/routes.py
-
 
 @main_bp.route("/rooms/<code>/state")
 @login_required
@@ -436,7 +372,7 @@ def room_state(code):
     if room.playback_status == 'playing' and room.updated_at:
         elapsed = (datetime.utcnow() - room.updated_at).total_seconds()
         current_pos += elapsed
-
+    current_member_count = RoomMember.query.filter_by(room_id=room.id).count() + 1
     # 2. 聊天记录 (修复：必须返回 messages 字段)
     recent_msgs = RoomMessage.query.filter_by(room_id=room.id) \
         .order_by(RoomMessage.created_at.desc()) \
@@ -467,7 +403,8 @@ def room_state(code):
         "is_active": room.is_active,
         "updated_at": room.updated_at.isoformat() if room.updated_at else None,
         "messages": messages_data,  # 确保前端能收到消息
-        "playlist": playlist_data  # 确保前端能收到歌单
+        "playlist": playlist_data,  # 确保前端能收到歌单
+        "member_count": current_member_count
     })
 
 

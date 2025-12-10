@@ -191,9 +191,30 @@ function initRoomSync() {
   async function refreshState() {
     try {
       const response = await fetch(stateUrl);
+      // [新增] 处理房间已删除 (404 Not Found)
+      // 当房主删除房间后，room_state 接口会返回 404
+      if (response.status === 404) {
+        alert("房间已解散，正在返回首页...");
+        window.location.href = "/dashboard";
+        return;
+      }
+
+      // [新增] 处理房间已关闭 (403 Forbidden)
+      // 当房主关闭房间后，非房主成员调用 room_state 会返回 403
+      if (response.status === 403) {
+        alert("房间已打烊，正在返回首页...");
+        window.location.href = "/dashboard";
+        return;
+      }
+
       if (!response.ok) return;
       const state = await response.json();
 
+      // [新增] 实时更新在线人数
+      if (state.member_count !== undefined) {
+          const countEl = document.getElementById("member-count-display");
+          if (countEl) countEl.textContent = state.member_count;
+      }
       // 更新本地状态
       if (state.playlist) currentPlaylist = state.playlist;
       currentTrackName = state.current_track_name;
