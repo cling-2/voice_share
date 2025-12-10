@@ -382,19 +382,19 @@ def delete_room(code):
     return redirect(url_for("main.my_rooms"))
 
 
-@main_bp.route("/rooms/<code>/messages", methods=["POST"])
-@login_required
-def send_message(code):
-    room = Room.query.filter_by(code=code).first_or_404()
-    content = request.form.get("content", "").strip()
-    if not content:
-        flash("评论内容不能为空", "error")
-        return redirect(url_for("main.room_detail", code=code))
-    message = RoomMessage(room_id=room.id, user_id=current_user.id, content=content)
-    db.session.add(message)
-    db.session.commit()
-    flash("已发送", "success")
-    return redirect(url_for("main.room_detail", code=code))
+# @main_bp.route("/rooms/<code>/messages", methods=["POST"])
+# @login_required
+# def send_message(code):
+#     room = Room.query.filter_by(code=code).first_or_404()
+#     content = request.form.get("content", "").strip()
+#     if not content:
+#         flash("评论内容不能为空", "error")
+#         return redirect(url_for("main.room_detail", code=code))
+#     message = RoomMessage(room_id=room.id, user_id=current_user.id, content=content)
+#     db.session.add(message)
+#     db.session.commit()
+#     flash("已发送", "success")
+#     return redirect(url_for("main.room_detail", code=code))
 
 
 @main_bp.route("/records")
@@ -430,13 +430,29 @@ def room_state(code):
     if not room.is_active and room.owner_id != current_user.id:
         abort(403)
 
-    # 【核心修复】动态计算当前播放进度
-    # 如果是播放状态，当前进度 = 记录的断点 + (现在时间 - 动作发生时间)
+    # 1. 计算播放进度 (保持之前的修复)
     current_pos = room.current_position
     if room.playback_status == 'playing' and room.updated_at:
-        # datetime.utcnow() 必须与 models.py 中的 default 一致
         elapsed = (datetime.utcnow() - room.updated_at).total_seconds()
         current_pos += elapsed
+
+    # 2. 【新增】获取最新 50 条消息，供前端轮询同步
+    # 注意：为了效率，只取最近的消息；前端会根据 ID 去重
+    recent_msgs = RoomMessage.query.filter_by(room_id=room.id) \
+        .order_by(RoomMessage.created_at.desc()) \
+        .limit(50).all()
+    # 倒序回来，变成“从旧到新”的时间顺序
+    recent_msgs.reverse()
+
+    messages_data = []
+    for msg in recent_msgs:
+        messages_data.append({
+            "id": msg.id,
+            "author_name": msg.author.nickname or msg.author.username,
+            "author_avatar": msg.author.avatar_url,
+            "created_at": msg.created_at.strftime('%H:%M'),
+            "content": msg.content
+        })
 
     return jsonify(
         {
@@ -446,9 +462,9 @@ def room_state(code):
             "current_position": current_pos,
             "is_active": room.is_active,
             "updated_at": room.updated_at.isoformat() if room.updated_at else None,
+            "messages": messages_data  # 【关键】把消息带回去
         }
     )
-
 
 @main_bp.route("/rooms/<code>/toggle", methods=["POST"])
 @login_required
@@ -492,3 +508,19 @@ def toggle_playback(code):
     db.session.commit()
     return redirect(url_for("main.room_detail", code=code))
 
+
+@main_bp.route("/rooms/<code>/messages", methods=["POST"])
+@login_required
+def send_message(code):
+    room = Room.query.filter_by(code=code).first_or_404()
+    content = request.form.get("content", "").strip()
+
+    if not content:
+        return jsonify({"error": "内容不能为空"}), 400
+
+    message = RoomMessage(room_id=room.id, user_id=current_user.id, content=content)
+    db.session.add(message)
+    db.session.commit()
+
+    # 【关键】不再重定向，而是返回 JSON 成功信号
+    return jsonify({"status": "success"})

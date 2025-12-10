@@ -1,38 +1,82 @@
 document.addEventListener("DOMContentLoaded", () => {
   initSliderVerification();
   initGlobalHostControls();
+  initChatControls(); // 【新增】初始化聊天拦截
   initRoomSync();
   initMusicAutofill();
 });
 
-// --- 1. 房主控制逻辑 ---
+// --- 1. 聊天发送逻辑 (拦截表单，防止刷新) ---
+function initChatControls() {
+  const chatForm = document.querySelector('.chat-form');
+  if (!chatForm) return;
+
+  chatForm.addEventListener('submit', async (e) => {
+    e.preventDefault(); // 阻止默认提交（防止页面刷新！）
+
+    const input = chatForm.querySelector('input[name="content"]');
+    const btn = chatForm.querySelector('.send-btn');
+    const content = input.value.trim();
+    if (!content) return;
+
+    // 视觉反馈：禁用按钮防止重复发送
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+
+    const formData = new FormData(chatForm);
+
+    try {
+      const response = await fetch(chatForm.action, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (response.ok) {
+        // 发送成功：清空输入框
+        input.value = '';
+        // 立即触发一次同步，让自己的消息马上显示出来
+        if (window.manualRefreshState) await window.manualRefreshState();
+        // 滚动到底部 (可选，updateChatLog 里通常会处理)
+        const chatLog = document.querySelector("#chat-log");
+        if(chatLog) chatLog.scrollTop = chatLog.scrollHeight;
+      } else {
+        console.error("消息发送失败");
+      }
+    } catch (err) {
+      console.error("网络错误", err);
+    } finally {
+      // 恢复按钮
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      // 保持输入框聚焦，方便继续打字
+      input.focus();
+    }
+  });
+}
+
+// --- 2. 房主控制逻辑 ---
 function initGlobalHostControls() {
   document.body.addEventListener('click', async (e) => {
     const btn = e.target.closest('.control-btn');
     if (!btn) return;
     e.preventDefault();
 
-    // 检查配置
     if (!window.roomConfig || !window.roomConfig.toggleUrl) return;
 
-    // 视觉反馈
     const originalOpacity = btn.style.opacity;
     btn.style.opacity = '0.6';
     btn.style.cursor = 'wait';
 
-    // 构造数据
     const formData = new FormData();
     const action = btn.value || btn.getAttribute('value');
     formData.append('action', action);
 
-    // 获取 Token
     const form = btn.closest('form');
     if (form) {
         const csrf = form.querySelector('input[name="csrf_token"]');
         if (csrf) formData.append('csrf_token', csrf.value);
     }
 
-    // 获取进度
     const audio = document.querySelector('#room-audio');
     let pos = 0;
     if (audio && !isNaN(audio.currentTime)) {
@@ -47,8 +91,6 @@ function initGlobalHostControls() {
       });
       if (response.ok) {
         if (window.manualRefreshState) await window.manualRefreshState();
-      } else {
-        console.error("请求失败:", response.status);
       }
     } catch (err) {
       console.error("网络错误:", err);
@@ -61,13 +103,12 @@ function initGlobalHostControls() {
   });
 }
 
-// --- 2. 房间同步逻辑 (修复房主回退Bug) ---
+// --- 3. 房间同步逻辑 ---
 function initRoomSync() {
   if (!window.roomConfig) return;
   const { stateUrl, audioSelector, isOwner } = window.roomConfig;
   const audio = document.querySelector(audioSelector);
 
-  // UI 元素
   const label = document.querySelector("#state-label");
   const trackLabel = document.querySelector("#current-track-label");
   const statusIndicator = document.querySelector(".status-indicator");
@@ -75,13 +116,11 @@ function initRoomSync() {
   const hostBtnWrapper = document.querySelector("#host-btn-wrapper");
   const chatLog = document.querySelector("#chat-log");
 
-  // 进度条
   const progressFill = document.querySelector("#progress-fill");
   const timeCurrent = document.querySelector("#time-current");
   const timeDuration = document.querySelector("#time-duration");
   const vinylWrapper = document.querySelector('.vinyl-wrapper');
 
-  // 本地进度驱动
   if (audio) {
     audio.addEventListener("timeupdate", () => {
       const current = audio.currentTime || 0;
@@ -102,14 +141,12 @@ function initRoomSync() {
     });
   }
 
-  // 同步状态
   async function refreshState() {
     try {
       const response = await fetch(stateUrl);
       if (!response.ok) return;
       const state = await response.json();
 
-      // UI 更新
       if (label) label.textContent = state.playback_status === "playing" ? "播放中" : "已暂停";
       if (statusDot) {
         statusDot.classList.remove('playing', 'paused');
@@ -124,7 +161,6 @@ function initRoomSync() {
         statusIndicator.className = `status-indicator ${state.is_active ? 'active' : 'closed'}`;
       }
 
-      // 按钮自动切换
       if (hostBtnWrapper) {
           const currentBtn = hostBtnWrapper.querySelector('.control-btn');
           if (currentBtn) {
@@ -143,13 +179,11 @@ function initRoomSync() {
           }
       }
 
-      // 音频逻辑
       if (audio && state.is_active) {
           if (state.current_track_file) {
             const targetSrc = `/static/uploads/music/${state.current_track_file}`;
             const currentSrcPath = decodeURIComponent(audio.src).split('/static/uploads/music/')[1];
 
-            // 1. 切歌
             if (currentSrcPath !== state.current_track_file) {
               audio.src = targetSrc;
               if (state.current_position > 0) audio.currentTime = state.current_position;
@@ -159,28 +193,20 @@ function initRoomSync() {
               } catch (e) { console.error(e); }
             }
 
-            // 2. 进度修正 (核心修复逻辑)
             if (state.current_position !== undefined && state.current_position !== null) {
                  const diff = Math.abs(audio.currentTime - state.current_position);
-
-                 // 情况A：暂停状态，必须对齐
                  if (state.playback_status === "paused") {
                      if (diff > 0.5) audio.currentTime = state.current_position;
                  }
-                 // 情况B：播放状态
                  else if (state.playback_status === "playing") {
-                     // 【关键】如果是房主，且正在播放中，忽略微小差异，防止回退！
-                     // 只有差异极大(>5秒)才同步(防止完全乱套)
                      if (isOwner && !audio.paused) {
                          if (diff > 5) audio.currentTime = state.current_position;
                      } else {
-                         // 如果是听众，或者房主还没开始播，就老实同步
                          if (diff > 2) audio.currentTime = state.current_position;
                      }
                  }
             }
 
-            // 3. 播放控制
             if (state.playback_status === "playing") {
                 if (audio.paused) audio.play().catch(() => {});
                 if (vinylWrapper) vinylWrapper.classList.add('spinning');
@@ -191,6 +217,7 @@ function initRoomSync() {
           }
       }
 
+      // 【关键】处理聊天记录同步
       if (chatLog && state.messages) updateChatLog(chatLog, state.messages);
 
     } catch (error) {
@@ -203,7 +230,7 @@ function initRoomSync() {
   setInterval(refreshState, 2000);
 }
 
-// --- 3. 聊天 (保持不变) ---
+// --- 4. 聊天渲染 (保持不变) ---
 function updateChatLog(container, messages) {
     const existingItems = container.querySelectorAll('.chat-bubble-row');
     const existingIds = new Set();
@@ -212,6 +239,7 @@ function updateChatLog(container, messages) {
     });
     let hasNew = false;
     const noMsg = container.querySelector('.no-msg');
+
     messages.forEach(msg => {
         if (!existingIds.has(msg.id)) {
             if (noMsg) noMsg.remove();
@@ -233,7 +261,7 @@ function updateChatLog(container, messages) {
     if (hasNew) container.scrollTop = container.scrollHeight;
 }
 
-// --- 4. 辅助函数 ---
+// --- 5. 辅助函数 ---
 function initSliderVerification() {
   document.querySelectorAll(".slider-verify").forEach((wrapper) => {
     const thumb = wrapper.querySelector(".slider-thumb");
