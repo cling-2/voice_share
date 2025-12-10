@@ -164,6 +164,16 @@ def create_room():
     if not form.validate_on_submit():
         flash("房间名称校验失败", "error")
         return redirect(url_for("main.dashboard"))
+    # ========================== [开始插入修改代码] ==========================
+    # 检查用户是否已经创建了 3 个或更多房间
+    current_count = Room.query.filter_by(owner_id=current_user.id).count()
+    if current_count >= 3:
+        # 使用 flash 提示错误，而不是报错
+        flash("创建失败：你已拥有 3 个房间，请先解散旧房间再创建", "error")
+        # 重定向回仪表盘页面
+        return redirect(url_for("main.dashboard"))
+    # ========================== [结束插入修改代码] ==========================
+
     code = _generate_unique_room_code()
     room = Room(owner_id=current_user.id, name=form.name.data or generate_room_name(), code=code)
     db.session.add(room)
@@ -289,7 +299,13 @@ def leave_room(code):
         return redirect(url_for("main.room_detail", code=code))
     membership = RoomMember.query.filter_by(room_id=room.id, user_id=current_user.id).first()
     if membership:
+        # ========================== [开始插入修改代码] ==========================
+        # 1. 在删除成员关系之前，先发送一条离开的消息
+        # 注意：content 内容可以自定义，前端会自动显示发送者名字
         leave_msg = RoomMessage(room_id=room.id, user_id=current_user.id, content="离开了房间")
+        db.session.add(leave_msg)
+        # ========================== [结束插入修改代码] ==========================
+
         db.session.delete(membership)
         db.session.commit()
         flash("你已退出房间，可随时再次通过房间号加入", "info")

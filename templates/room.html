@@ -2,19 +2,19 @@
 {% block title %}房间 {{ room.code }}{% endblock %}
 
 {% block content %}
-<div class="room-text">
-  <h1 class="room-name">{{ room.name }}</h1>
-  <p class="room-meta">
-    <i class="ri-user-star-line"></i> 房主: {{ room.owner.nickname or room.owner.username }}
-    <span class="dot">·</span>
+<!--<div class="room-text">-->
+<!--  <h1 class="room-name">{{ room.name }}</h1>-->
+<!--  <p class="room-meta">-->
+<!--    <i class="ri-user-star-line"></i> 房主: {{ room.owner.nickname or room.owner.username }}-->
+<!--    <span class="dot">·</span>-->
 
-    <i class="ri-group-line" style="margin-left: 0.5rem;"></i>
-    <span id="member-count-display">{{ member_count }}</span>人在线
-    <span class="dot">·</span>
+<!--    <i class="ri-group-line" style="margin-left: 0.5rem;"></i>-->
+<!--    <span id="member-count-display">{{ member_count }}</span>人在线-->
+<!--    <span class="dot">·</span>-->
 
-    <span class="status-indicator {{ 'active' if room.is_active else 'closed' }}">{{ '正在营业' if room.is_active else '已打烊' }}</span>
-  </p>
-</div>
+<!--    <span class="status-indicator {{ 'active' if room.is_active else 'closed' }}">{{ '正在营业' if room.is_active else '已打烊' }}</span>-->
+<!--  </p>-->
+<!--</div>-->
 
 <div class="room-page-container">
   <header class="room-top-bar">
@@ -26,6 +26,9 @@
           <i class="ri-user-star-line"></i> 房主: {{ room.owner.nickname or room.owner.username }}
           <span class="dot">·</span>
           <span class="status-indicator {{ 'active' if room.is_active else 'closed' }}">{{ '正在营业' if room.is_active else '已打烊' }}</span>
+          <i class="ri-group-line" style="margin-left: 0.5rem;"></i>
+          <span id="member-count-display">{{ member_count }}</span>人在线
+          <span class="dot">·</span>
         </p>
       </div>
     </div>
