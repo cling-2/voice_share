@@ -2,26 +2,49 @@
 {% block title %}个人资料{% endblock %}
 
 {% block content %}
-<section class="grid-card">
-  <h1>个人信息管理</h1>
-  <p>昵称最长 10 个字符，头像仅支持本地图片，修改后立即生效。</p>
-  <form method="post" enctype="multipart/form-data">
-    {{ form.hidden_tag() }}
-    <label>{{ form.nickname.label }}{{ form.nickname(class="input") }}</label>
-    {% for error in form.nickname.errors %}
-      <div class="error">{{ error }}</div>
-    {% endfor %}
+<div class="profile-container-wrapper">
+  <section class="profile-card-modern">
+    <div class="profile-visual">
+      <div class="avatar-wrapper-large">
+        <img src="{{ current_user.avatar_url }}" alt="当前头像" class="avatar-img-large" />
+        <div class="avatar-ring"></div>
+      </div>
+      <div class="profile-identity">
+        <h1 class="profile-nickname">{{ current_user.nickname or '未设置昵称' }}</h1>
+        <p class="profile-username">@{{ current_user.username }}</p>
+      </div>
+    </div>
 
-    <label class="file-input-label">
-      <span>{{ form.avatar.label.text }}</span>
-      {{ form.avatar(class="input") }}
-    </label>
-    {% for error in form.avatar.errors %}
-      <div class="error">{{ error }}</div>
-    {% endfor %}
+    <div class="profile-edit-area">
+      <form method="post" enctype="multipart/form-data" class="modern-form">
+        {{ form.hidden_tag() }}
 
-    <button type="submit" class="primary-btn">保存修改</button>
-  </form>
-</section>
+        <div class="form-group">
+          <label class="form-label">修改昵称</label>
+          {{ form.nickname(class="input-modern", placeholder="请输入新的昵称") }}
+          {% for error in form.nickname.errors %}
+            <div class="error-msg">{{ error }}</div>
+          {% endfor %}
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">更换头像</label>
+          <div class="file-upload-control">
+            <label for="avatar_input" class="file-select-btn">
+              <i class="ri-image-edit-line"></i> 选择图片
+            </label>
+            <span id="file-name-display" class="file-name-text">未选择新文件</span>
+            {{ form.avatar(id="avatar_input", class="hidden-input", onchange="document.getElementById('file-name-display').textContent = this.files[0]?this.files[0].name:'未选择新文件'") }}
+          </div>
+          {% for error in form.avatar.errors %}
+            <div class="error-msg">{{ error }}</div>
+          {% endfor %}
+          <p class="hint-text">支持 JPG/PNG 格式，建议正方形图片，小于 5MB</p>
+        </div>
+
+        <button type="submit" class="primary-btn full-width">保存修改</button>
+      </form>
+    </div>
+  </section>
+</div>
 {% endblock %}
-

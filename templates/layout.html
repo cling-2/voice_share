@@ -5,40 +5,64 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{% block title %}共享听歌房{% endblock %}</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.css" />
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
     {% block head_extra %}{% endblock %}
   </head>
   <body>
     <nav class="top-nav">
-      <div class="brand">VoiceShare</div>
-      <div class="nav-actions">
-        {% if current_user.is_authenticated %}
-          {% if current_user.is_admin %}
-            <a href="{{ url_for('admin.dashboard') }}">审核后台</a>
-          {% else %}
-            <div class="user-mini-card">
-              <img src="{{ current_user.avatar_url }}" alt="avatar" class="mini-avatar" />
-              <div class="user-meta">
-                <div class="user-name">{{ current_user.nickname or '新用户' }}</div>
-                <small class="user-sub">{{ current_user.username }}</small>
-              </div>
-            </div>
-            <a href="{{ url_for('main.dashboard') }}">首页</a>
-            <a href="{{ url_for('main.my_rooms') }}">我的房间</a>
-            <a href="{{ url_for('main.music') }}">我的音乐</a>
-            <a href="{{ url_for('main.records') }}">我的记录</a>
-            <a href="{{ url_for('main.profile') }}">个人资料</a>
+      <div class="nav-container">
+        <div class="nav-left">
+          <div class="brand">VoiceShare</div>
+
+          {% if current_user.is_authenticated and not current_user.is_admin %}
+          <div class="nav-links">
+            <a href="{{ url_for('main.dashboard') }}" class="nav-item {{ 'active' if request.endpoint == 'main.dashboard' }}">
+              <i class="ri-home-4-line"></i> 首页
+            </a>
+            <a href="{{ url_for('main.my_rooms') }}" class="nav-item {{ 'active' if request.endpoint == 'main.my_rooms' }}">
+              <i class="ri-community-line"></i> 房间
+            </a>
+            <a href="{{ url_for('main.music') }}" class="nav-item {{ 'active' if request.endpoint == 'main.music' }}">
+              <i class="ri-music-2-line"></i> 音乐
+            </a>
+            <a href="{{ url_for('main.records') }}" class="nav-item {{ 'active' if request.endpoint == 'main.records' }}">
+              <i class="ri-history-line"></i> 记录
+            </a>
+          </div>
           {% endif %}
-          <form method="post" action="{{ url_for('auth.logout') }}" class="inline-form">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-            <button type="submit" class="link-btn">退出</button>
-          </form>
-        {% else %}
-          <a href="{{ url_for('auth.login') }}">用户登录</a>
-          <a href="{{ url_for('auth.register') }}">用户注册</a>
-          <a href="{{ url_for('auth.admin_login') }}">管理员登录</a>
-        {% endif %}
-      </div>
+        </div>
+
+<div class="nav-right">
+          {% if current_user.is_authenticated %}
+            {% if current_user.is_admin %}
+              <span class="nav-item" style="color: var(--brand); font-weight: 600;">
+                <i class="ri-admin-line"></i> 管理员
+              </span>
+              <a href="{{ url_for('admin.dashboard') }}" class="primary-btn small">审核后台</a>
+            {% else %}
+              <a href="{{ url_for('main.profile') }}" class="user-mini-card">
+                <img src="{{ current_user.avatar_url }}" alt="avatar" class="mini-avatar" />
+                <div class="user-meta">
+                  <div class="user-name">{{ current_user.nickname or '新用户' }}</div>
+                </div>
+              </a>
+            {% endif %}
+
+            <form method="post" action="{{ url_for('auth.logout') }}" class="logout-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+              <button type="submit" class="icon-btn" title="退出登录">
+                <i class="ri-logout-box-r-line"></i>
+              </button>
+            </form>
+          {% else %}
+            <div class="auth-links">
+              <a href="{{ url_for('auth.login') }}" class="nav-item">登录</a>
+              <a href="{{ url_for('auth.admin_login') }}" class="nav-item" style="font-size: 0.9rem; color: var(--muted);">管理员</a>
+              <a href="{{ url_for('auth.register') }}" class="primary-btn small">注册</a>
+            </div>
+          {% endif %}
+        </div>
     </nav>
 
     <main>
@@ -59,4 +83,3 @@
     {% block body_extra %}{% endblock %}
   </body>
 </html>
-
