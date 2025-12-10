@@ -3,165 +3,65 @@
 
 {% block content %}
 <div class="room-page-container">
-
   <header class="room-top-bar">
     <div class="room-info-group">
-      <div class="room-badge">
-        <span class="room-code"># {{ room.code }}</span>
-      </div>
+      <div class="room-badge"><span class="room-code"># {{ room.code }}</span></div>
       <div class="room-text">
         <h1 class="room-name">{{ room.name }}</h1>
         <p class="room-meta">
           <i class="ri-user-star-line"></i> 房主: {{ room.owner.nickname or room.owner.username }}
           <span class="dot">·</span>
-          <span class="status-indicator {{ 'active' if room.is_active else 'closed' }}">
-            {{ '正在营业' if room.is_active else '已打烊' }}
-          </span>
+          <span class="status-indicator {{ 'active' if room.is_active else 'closed' }}">{{ '正在营业' if room.is_active else '已打烊' }}</span>
         </p>
       </div>
     </div>
-
     <div class="room-actions-group">
       {% if is_owner %}
         <form method="post" action="{{ url_for('main.room_availability', code=room.code) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
           <input type="hidden" name="action" value="{{ 'close' if room.is_active else 'open' }}" />
           <button type="submit" class="action-btn {{ 'outline' if room.is_active else 'primary' }}">
-            <i class="{{ 'ri-lock-2-line' if room.is_active else 'ri-lock-unlock-line' }}"></i>
-            {{ '暂时关闭' if room.is_active else '重新开放' }}
+            <i class="{{ 'ri-lock-2-line' if room.is_active else 'ri-lock-unlock-line' }}"></i> {{ '暂时关闭' if room.is_active else '重新开放' }}
           </button>
         </form>
-        <form method="post" action="{{ url_for('main.delete_room', code=room.code) }}" onsubmit="return confirm('确认解散该房间？房间号将失效。');">
+        <form method="post" action="{{ url_for('main.delete_room', code=room.code) }}" onsubmit="return confirm('确认解散？');">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-          <button type="submit" class="action-btn danger">
-            <i class="ri-delete-bin-5-line"></i> 解散
-          </button>
+          <button type="submit" class="action-btn danger"><i class="ri-delete-bin-5-line"></i> 解散</button>
         </form>
       {% else %}
         <form method="post" action="{{ url_for('main.leave_room', code=room.code) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-          <button type="submit" class="action-btn outline">
-            <i class="ri-logout-box-r-line"></i> 退出
-          </button>
+          <button type="submit" class="action-btn outline"><i class="ri-logout-box-r-line"></i> 退出</button>
         </form>
       {% endif %}
     </div>
   </header>
 
   {% if not room.is_active %}
-    <div class="room-notice warning">
-      <i class="ri-error-warning-line"></i> 房间已关闭，好友暂停进入，仅房主可见。
-    </div>
+    <div class="room-notice warning"><i class="ri-error-warning-line"></i> 房间已关闭，好友暂停进入，仅房主可见。</div>
   {% endif %}
 
   <div class="room-grid">
-
     <div class="left-column">
-
-<!--      <section class="player-card-modern">-->
-<!--        <div class="vinyl-wrapper {{ 'spinning' if room.playback_status == 'playing' }}">-->
-<!--           <div class="vinyl-disc">-->
-<!--             <div class="vinyl-cover-art">-->
-<!--               <i class="ri-music-2-fill"></i>-->
-<!--             </div>-->
-<!--           </div>-->
-<!--        </div>-->
-<!--      <section class="player-card-modern">-->
-<!--        <div class="vinyl-wrapper {{ 'spinning' if room.playback_status == 'playing' }}">-->
-<!--           <div class="vinyl-disc">-->
-<!--             <div class="vinyl-cover-art">-->
-<!--               <i class="ri-music-2-fill"></i>-->
-<!--             </div>-->
-<!--           </div>-->
-<!--        </div>-->
-
-<!--        <div class="player-info">-->
-<!--          <div class="track-status">-->
-<!--            <span class="status-dot {{ room.playback_status }}"></span>-->
-<!--            <span id="state-label">{{ '正在播放' if room.playback_status == 'playing' else '已暂停' }}</span>-->
-<!--          </div>-->
-<!--          <h2 class="current-track-name" id="current-track-label">-->
-<!--            {{ room.current_track_name or '等待播放...' }}-->
-<!--          </h2>-->
-
-<!--          <audio id="room-audio" preload="auto" class="hidden-audio">-->
-<!--            {% if room.current_track_file %}-->
-<!--              <source src="{{ url_for('static', filename='uploads/music/' + room.current_track_file) }}" type="audio/mpeg" />-->
-<!--            {% endif %}-->
-<!--          </audio>-->
-
-<!--          <div class="custom-player-bar">-->
-<!--&lt;!&ndash;            <div class="play-icon-display">&ndash;&gt;-->
-<!--&lt;!&ndash;              <i class="ri-{{ 'play-circle-fill' if room.playback_status == 'playing' else 'pause-circle-fill' }}"></i>&ndash;&gt;-->
-<!--&lt;!&ndash;            </div>&ndash;&gt;-->
-
-<!--            <div class="progress-container">-->
-<!--              <span class="time-text" id="time-current">00:00</span>-->
-<!--              <div class="progress-track-bg">-->
-<!--                <div class="progress-fill" id="progress-fill" style="width: 0%;"></div>-->
-<!--              </div>-->
-<!--              <span class="time-text" id="time-duration">00:00</span>-->
-<!--            </div>-->
-
-<!--            <div class="volume-control">-->
-<!--              <i class="ri-volume-up-line" id="vol-icon"></i>-->
-<!--              <input type="range" class="vol-slider" min="0" max="1" step="0.1" value="1" oninput="adjustVolume(this.value)">-->
-<!--            </div>-->
-<!--          </div>-->
-
-<!--          {% if is_owner %}-->
-<!--            <div class="host-controls-bar">-->
-<!--              <form method="post" action="{{ url_for('main.toggle_playback', code=room.code) }}" class="control-form">-->
-<!--                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />-->
-<!--                <div class="host-btn-group">-->
-<!--                  {% if room.playback_status == 'playing' %}-->
-<!--                    <button class="control-btn pause" name="action" value="pause" title="全员暂停">-->
-<!--                      <i class="ri-pause-mini-fill"></i> 暂停全员-->
-<!--                    </button>-->
-<!--                  {% else %}-->
-<!--                    <button class="control-btn play" name="action" value="play" title="全员播放">-->
-<!--                      <i class="ri-play-mini-fill"></i> 播放全员-->
-<!--                    </button>-->
-<!--                  {% endif %}-->
-<!--                </div>-->
-<!--              </form>-->
-<!--              <span class="host-badge">房主权限</span>-->
-<!--            </div>-->
-<!--          {% else %}-->
-<!--            <p class="guest-hint"><i class="ri-broadcast-line"></i> 进度由房主统一控制</p>-->
-<!--          {% endif %}-->
-<!--        </div>-->
-<!--      </section>-->
-<section class="player-card-modern">
+      <section class="player-card-modern">
         <div class="vinyl-wrapper {{ 'spinning' if room.playback_status == 'playing' }}">
-           <div class="vinyl-disc">
-             <div class="vinyl-cover-art">
-               <i class="ri-music-2-fill"></i>
-             </div>
-           </div>
+           <div class="vinyl-disc"><div class="vinyl-cover-art"><i class="ri-music-2-fill"></i></div></div>
         </div>
-
         <div class="player-info">
           <div class="track-status">
             <span class="status-dot {{ room.playback_status }}"></span>
             <span id="state-label">{{ '正在播放' if room.playback_status == 'playing' else '已暂停' }}</span>
           </div>
-          <h2 class="current-track-name" id="current-track-label">
-            {{ room.current_track_name or '等待播放...' }}
-          </h2>
-
+          <h2 class="current-track-name" id="current-track-label">{{ room.current_track_name or '等待播放...' }}</h2>
           <audio id="room-audio" preload="auto" class="hidden-audio">
             {% if room.current_track_file %}
               <source src="{{ url_for('static', filename='uploads/music/' + room.current_track_file) }}" type="audio/mpeg" />
             {% endif %}
           </audio>
-
           <div class="custom-player-bar">
             <div class="progress-container">
               <span class="time-text" id="time-current">00:00</span>
-              <div class="progress-track-bg">
-                <div class="progress-fill" id="progress-fill" style="width: 0%;"></div>
-              </div>
+              <div class="progress-track-bg"><div class="progress-fill" id="progress-fill" style="width: 0%;"></div></div>
               <span class="time-text" id="time-duration">00:00</span>
             </div>
             <div class="volume-control">
@@ -169,22 +69,23 @@
               <input type="range" class="vol-slider" min="0" max="1" step="0.1" value="1" oninput="adjustVolume(this.value)">
             </div>
           </div>
-
           {% if is_owner %}
             <div class="host-controls-bar">
-              <form class="control-form">
+              <form method="post" action="{{ url_for('main.toggle_playback', code=room.code) }}" class="control-form">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+
                 <div class="host-btn-group" id="host-btn-wrapper">
                   {% if room.playback_status == 'playing' %}
-                    <button class="control-btn pause" name="action" value="pause" title="全员暂停">
+                    <button type="button" class="control-btn pause" data-action="pause" title="全员暂停">
                       <i class="ri-pause-mini-fill"></i> 暂停全员
                     </button>
                   {% else %}
-                    <button class="control-btn play" name="action" value="play" title="全员播放">
+                    <button type="button" class="control-btn play" data-action="play" title="全员播放">
                       <i class="ri-play-mini-fill"></i> 播放全员
                     </button>
                   {% endif %}
                 </div>
+
               </form>
               <span class="host-badge">房主权限</span>
             </div>
@@ -193,78 +94,14 @@
           {% endif %}
         </div>
       </section>
-<!--        <div class="player-info">-->
-<!--          <div class="track-status">-->
-<!--            <span class="status-dot {{ room.playback_status }}"></span>-->
-<!--            <span id="state-label">{{ '正在播放' if room.playback_status == 'playing' else '已暂停' }}</span>-->
-<!--          </div>-->
-<!--          <h2 class="current-track-name" id="current-track-label">-->
-<!--            {{ room.current_track_name or '等待播放...' }}-->
-<!--          </h2>-->
-
-<!--          <audio id="room-audio" controls preload="auto" class="custom-audio-element">-->
-<!--            {% if room.current_track_file %}-->
-<!--              <source src="{{ url_for('static', filename='uploads/music/' + room.current_track_file) }}" type="audio/mpeg" />-->
-<!--            {% endif %}-->
-<!--            您的浏览器不支持音频播放-->
-<!--          </audio>-->
-
-<!--          {% if is_owner %}-->
-<!--            <div class="host-controls-bar">-->
-<!--              <form method="post" action="{{ url_for('main.toggle_playback', code=room.code) }}" class="control-form">-->
-<!--                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />-->
-<!--                {% if room.playback_status == 'playing' %}-->
-<!--                  <button class="control-btn pause" name="action" value="pause" title="全员暂停">-->
-<!--                    <i class="ri-pause-circle-fill"></i>-->
-<!--                  </button>-->
-<!--                {% else %}-->
-<!--                  <button class="control-btn play" name="action" value="play" title="全员播放">-->
-<!--                    <i class="ri-play-circle-fill"></i>-->
-<!--                  </button>-->
-<!--                {% endif %}-->
-<!--              </form>-->
-<!--              <span class="host-label">房主控台</span>-->
-<!--            </div>-->
-<!--          {% else %}-->
-<!--            <p class="guest-hint"><i class="ri-headphone-line"></i> 播放进度由房主同步</p>-->
-<!--          {% endif %}-->
-<!--        </div>-->
-<!--      </section>-->
 
       <section class="playlist-section">
-        <div class="playlist-header">
-          <h3><i class="ri-play-list-line"></i> 播放队列</h3>
-        </div>
-
+        <div class="playlist-header"><h3><i class="ri-play-list-line"></i> 播放队列</h3></div>
         <div class="playlist-scroll-area">
-          {% for item in room_playlist %}
-            <div class="playlist-item {{ 'playing' if item.music.title == room.current_track_name }}">
-              <div class="item-info">
-                <span class="item-title">{{ item.music.title }}</span>
-                {% if item.music.title == room.current_track_name %}
-                  <span class="playing-badge"><i class="ri-volume-up-line"></i></span>
-                {% endif %}
-              </div>
-              {% if is_owner %}
-                <form method="post" action="{{ url_for('main.toggle_playback', code=room.code) }}">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-                  <input type="hidden" name="music_id" value="{{ item.music.id }}" />
-                  <button type="submit" class="icon-btn-sm" title="切歌">
-                    <i class="ri-play-mini-fill"></i>
-                  </button>
-                </form>
-              {% endif %}
-            </div>
-          {% else %}
-            <div class="empty-list-placeholder">队列空空如也</div>
-          {% endfor %}
+          <div class="empty-list-placeholder">加载中...</div>
         </div>
-
         <div class="library-adder">
-          <div class="adder-header">
-            <h4>从我的库添加</h4>
-            <a href="{{ url_for('main.music') }}" class="link-sm">上传新歌</a>
-          </div>
+          <div class="adder-header"><h4>从我的库添加</h4><a href="{{ url_for('main.music') }}" class="link-sm">上传新歌</a></div>
           <div class="library-scroll">
             {% for music in my_library %}
               <div class="library-item-row">
@@ -272,9 +109,7 @@
                 <form method="post" action="{{ url_for('main.add_to_playlist', code=room.code) }}">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                   <input type="hidden" name="music_id" value="{{ music.id }}" />
-                  <button type="submit" class="add-btn-sm">
-                    <i class="ri-add-line"></i> 点歌
-                  </button>
+                  <button type="submit" class="add-btn-sm"><i class="ri-add-line"></i> 点歌</button>
                 </form>
               </div>
             {% else %}
@@ -283,62 +118,38 @@
           </div>
         </div>
       </section>
-
     </div>
 
     <div class="right-column">
       <section class="chat-panel-modern">
-        <div class="chat-header">
-          <h3><i class="ri-chat-smile-3-line"></i> 房间互动</h3>
-        </div>
-
+        <div class="chat-header"><h3><i class="ri-chat-smile-3-line"></i> 房间互动</h3></div>
         <div class="chat-messages-area" id="chat-log">
-          {% for message in messages %}
-            <div class="chat-bubble-row {{ 'self' if message.author.id == current_user.id }}" data-id="{{ message.id }}">
-              <img src="{{ message.author.avatar_url }}" class="chat-avatar-sm" />
-              <div class="chat-content-wrap">
-                <div class="chat-meta">
-                  <span class="chat-name">{{ message.author.nickname or message.author.username }}</span>
-                  <span class="chat-time">{{ message.created_at.strftime('%H:%M') }}</span>
-                </div>
-                <div class="chat-bubble">
-                  {{ message.content }}
-                </div>
-              </div>
-            </div>
-          {% else %}
-            <div class="no-msg">
-              <i class="ri-chat-1-line"></i>
-              <p>暂无消息，打个招呼吧</p>
-            </div>
-          {% endfor %}
+          <div class="no-msg"><i class="ri-chat-1-line"></i><p>加载中...</p></div>
         </div>
-
         <div class="chat-input-area">
           <form method="post" action="{{ url_for('main.send_message', code=room.code) }}" class="chat-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
             <input type="text" name="content" class="chat-input" placeholder="发送弹幕..." autocomplete="off" required>
-            <button type="submit" class="send-btn">
-              <i class="ri-send-plane-fill"></i>
-            </button>
+            <button type="submit" class="send-btn"><i class="ri-send-plane-fill"></i></button>
           </form>
         </div>
       </section>
     </div>
-
   </div>
 </div>
 {% endblock %}
 
 {% block body_extra %}
 <script>
+  // 这里的配置现在在 main.js 加载之前就会准备好
   window.roomConfig = {
     code: "{{ room.code }}",
     isOwner: {{ 'true' if is_owner else 'false' }},
     isActive: {{ 'true' if room.is_active else 'false' }},
     audioSelector: "#room-audio",
     stateUrl: "{{ url_for('main.room_state', code=room.code) }}",
-    toggleUrl: "{{ url_for('main.toggle_playback', code=room.code) }}"
+    toggleUrl: "{{ url_for('main.toggle_playback', code=room.code) }}",
+    playlistDeleteUrl: "{{ url_for('main.delete_from_playlist', code=room.code) }}"
   };
 </script>
 {% endblock %}

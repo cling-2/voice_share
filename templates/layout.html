@@ -14,46 +14,29 @@
       <div class="nav-container">
         <div class="nav-left">
           <div class="brand">VoiceShare</div>
-
           {% if current_user.is_authenticated and not current_user.is_admin %}
           <div class="nav-links">
-            <a href="{{ url_for('main.dashboard') }}" class="nav-item {{ 'active' if request.endpoint == 'main.dashboard' }}">
-              <i class="ri-home-4-line"></i> 首页
-            </a>
-            <a href="{{ url_for('main.my_rooms') }}" class="nav-item {{ 'active' if request.endpoint == 'main.my_rooms' }}">
-              <i class="ri-community-line"></i> 房间
-            </a>
-            <a href="{{ url_for('main.music') }}" class="nav-item {{ 'active' if request.endpoint == 'main.music' }}">
-              <i class="ri-music-2-line"></i> 音乐
-            </a>
-            <a href="{{ url_for('main.records') }}" class="nav-item {{ 'active' if request.endpoint == 'main.records' }}">
-              <i class="ri-history-line"></i> 记录
-            </a>
+            <a href="{{ url_for('main.dashboard') }}" class="nav-item {{ 'active' if request.endpoint == 'main.dashboard' }}"><i class="ri-home-4-line"></i> 首页</a>
+            <a href="{{ url_for('main.my_rooms') }}" class="nav-item {{ 'active' if request.endpoint == 'main.my_rooms' }}"><i class="ri-community-line"></i> 房间</a>
+            <a href="{{ url_for('main.music') }}" class="nav-item {{ 'active' if request.endpoint == 'main.music' }}"><i class="ri-music-2-line"></i> 音乐</a>
+            <a href="{{ url_for('main.records') }}" class="nav-item {{ 'active' if request.endpoint == 'main.records' }}"><i class="ri-history-line"></i> 记录</a>
           </div>
           {% endif %}
         </div>
-
-<div class="nav-right">
+        <div class="nav-right">
           {% if current_user.is_authenticated %}
             {% if current_user.is_admin %}
-              <span class="nav-item" style="color: var(--brand); font-weight: 600;">
-                <i class="ri-admin-line"></i> 管理员
-              </span>
+              <span class="nav-item" style="color: var(--brand); font-weight: 600;"><i class="ri-admin-line"></i> 管理员</span>
               <a href="{{ url_for('admin.dashboard') }}" class="primary-btn small">审核后台</a>
             {% else %}
               <a href="{{ url_for('main.profile') }}" class="user-mini-card">
                 <img src="{{ current_user.avatar_url }}" alt="avatar" class="mini-avatar" />
-                <div class="user-meta">
-                  <div class="user-name">{{ current_user.nickname or '新用户' }}</div>
-                </div>
+                <div class="user-meta"><div class="user-name">{{ current_user.nickname or '新用户' }}</div></div>
               </a>
             {% endif %}
-
             <form method="post" action="{{ url_for('auth.logout') }}" class="logout-form">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-              <button type="submit" class="icon-btn" title="退出登录">
-                <i class="ri-logout-box-r-line"></i>
-              </button>
+              <button type="submit" class="icon-btn" title="退出登录"><i class="ri-logout-box-r-line"></i></button>
             </form>
           {% else %}
             <div class="auth-links">
@@ -63,6 +46,7 @@
             </div>
           {% endif %}
         </div>
+      </div>
     </nav>
 
     <main>
@@ -75,11 +59,10 @@
           </div>
         {% endif %}
       {% endwith %}
-
       {% block content %}{% endblock %}
     </main>
 
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     {% block body_extra %}{% endblock %}
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
   </body>
 </html>
