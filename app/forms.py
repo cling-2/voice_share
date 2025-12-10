@@ -35,6 +35,8 @@ class RegistrationForm(FlaskForm):
         default="user",
         validators=[DataRequired()],
     )
+    # [新增] 管理员密钥字段 (不加 DataRequired，因为普通用户不用填)
+    secret_key = PasswordField("管理员密钥")
     password = PasswordField("密码", validators=[DataRequired(), Length(min=6, max=64)])
     confirm_password = PasswordField(
         "确认密码",
@@ -87,7 +89,7 @@ class RoomJoinForm(FlaskForm):
 
 class AdminRegistrationForm(RegistrationForm):
     role = HiddenField(default="admin", validators=[DataRequired()])
-
+    secret_key = PasswordField("管理员密钥", validators=[DataRequired()])
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.role.data = "admin"

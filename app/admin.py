@@ -47,3 +47,4 @@ def reject_music(music_id):
     flash("音乐已标记为违规并通知上传者", "info")
     return redirect(url_for("admin.dashboard"))
 
+

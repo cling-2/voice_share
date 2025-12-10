@@ -17,6 +17,13 @@ def register():
         return redirect(url_for("main.dashboard"))
     form = RegistrationForm()
     if form.validate_on_submit():
+        # [新增] 针对下拉框选择“管理员”的密钥校验逻辑
+        if form.role.data == "admin":
+            if form.secret_key.data != "i_love_database":
+                flash("管理员认证失败：密钥错误", "error")
+                # 校验失败，重新渲染页面
+                return render_template("auth/register.html", form=form, page="user")
+
         if User.query.filter_by(username=form.username.data).first():
             flash("账号已存在，请直接登录", "error")
         else:
@@ -30,7 +37,6 @@ def register():
             target = "admin.dashboard" if is_admin else "main.dashboard"
             return redirect(url_for(target))
     return render_template("auth/register.html", form=form, page="user")
-
 
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
@@ -65,23 +71,6 @@ def logout():
     return redirect(url_for("auth.login"))
 
 
-@auth_bp.route("/admin/register", methods=["GET", "POST"])
-def admin_register():
-    if current_user.is_authenticated and current_user.is_admin:
-        return redirect(url_for("admin.dashboard"))
-    form = AdminRegistrationForm()
-    if form.validate_on_submit():
-        if User.query.filter_by(username=form.username.data).first():
-            flash("管理员账号已存在", "error")
-        else:
-            user = User(username=form.username.data, is_admin=True)
-            user.set_password(form.password.data)
-            db.session.add(user)
-            db.session.commit()
-            flash("管理员注册成功，请登录", "success")
-            return redirect(url_for("auth.admin_login"))
-    return render_template("auth/register.html", form=form, page="admin")
-
 
 @auth_bp.route("/admin/login", methods=["GET", "POST"])
 def admin_login():
@@ -97,3 +86,24 @@ def admin_login():
         flash("账号或密码错误", "error")
     return render_template("auth/login.html", form=form, page="admin")
 
+@auth_bp.route("/admin/register", methods=["GET", "POST"])
+def admin_register():
+    if current_user.is_authenticated and current_user.is_admin:
+        return redirect(url_for("admin.dashboard"))
+    form = AdminRegistrationForm()
+    if form.validate_on_submit():
+        # [新增] 校验管理员密钥
+        if form.secret_key.data != "i_love_database":
+            flash("管理员密钥错误，验证失败", "error")
+            return render_template("auth/register.html", form=form, page="admin")
+
+        if User.query.filter_by(username=form.username.data).first():
+            flash("管理员账号已存在", "error")
+        else:
+            user = User(username=form.username.data, is_admin=True)
+            user.set_password(form.password.data)
+            db.session.add(user)
+            db.session.commit()
+            flash("管理员注册成功，请登录", "success")
+            return redirect(url_for("auth.admin_login"))
+    return render_template("auth/register.html", form=form, page="admin")
