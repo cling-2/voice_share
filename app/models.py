@@ -46,19 +46,21 @@ class Music(TimestampMixin, db.Model):
     __tablename__ = "musics"
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id", ondelete='CASCADE'), nullable=False)#补充一个显式级联删除
     title = db.Column(db.String(128), nullable=False)
     original_filename = db.Column(db.String(255), nullable=False)
     stored_filename = db.Column(db.String(255), nullable=False)
     status = db.Column(db.String(32), default="pending")  # pending/approved/rejected
     rejection_reason = db.Column(db.String(255), nullable=True)
-    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
     def file_url(self) -> str:
         return f"/static/uploads/music/{self.stored_filename}"
 
 
 class Room(TimestampMixin, db.Model):
+    # 单独为 Room 覆盖 created_at 以添加索引，便于按创建时间范围查询
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     id = db.Column(db.Integer, primary_key=True)
     owner_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     name = db.Column(db.String(64), nullable=False)
@@ -73,6 +75,9 @@ class Room(TimestampMixin, db.Model):
     members = db.relationship("RoomMember", backref="room", lazy=True)
     # 新增 playlist 关系
     playlist = db.relationship("RoomPlaylist", backref="room", lazy=True, cascade="all, delete-orphan")
+    __table_args__ = (
+        db.Index("ix_room_code", "code", unique=True),
+    )
 
 
 class RoomPlaylist(TimestampMixin, db.Model):
@@ -111,7 +116,7 @@ class ListenRecord(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     song_name = db.Column(db.String(255), nullable=False)
-    played_at = db.Column(db.DateTime, default=datetime.utcnow)
+    played_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
     user = db.relationship("User", backref="listen_records")
 
