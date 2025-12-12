@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from flask import (
@@ -25,7 +25,7 @@ from .models import (
     RoomPlaylist,
     User,
 )
-from .utils import generate_room_code, generate_room_name, save_avatar, save_music
+from .utils import generate_room_code, generate_room_name, save_avatar, save_music, format_datetime
 
 main_bp = Blueprint("main", __name__)
 
@@ -83,6 +83,7 @@ def profile():
 
 @main_bp.route("/music", methods=["GET", "POST"])
 @login_required
+#增加按上传时间范围（from/to ISO 字符串）过滤和分页（page 参数），查询按 Music.uploaded_at 索引排序并使用 LIMIT/OFFSET。
 def music():
     if current_user.is_admin:
         abort(403)
@@ -110,8 +111,26 @@ def music():
                 flash("请确保上传音乐拥有合法使用权限", "info")
                 flash("音乐已进入待审核队列", "success")
                 return redirect(url_for("main.music"))
-    my_music = Music.query.filter_by(user_id=current_user.id).order_by(Music.uploaded_at.desc()).all()
-    return render_template("music.html", upload_form=upload_form, musics=my_music)
+    # 支持按上传时间范围查询与分页，利用 uploaded_at 索引
+    page = int(request.args.get("page", 1))
+    per_page = 20
+    date_from = request.args.get("from")
+    date_to = request.args.get("to")
+    q = Music.query.filter_by(user_id=current_user.id)
+    if date_from:
+        try:
+            dt_from = datetime.fromisoformat(date_from)
+            q = q.filter(Music.uploaded_at >= dt_from)
+        except Exception:
+            pass
+    if date_to:
+        try:
+            dt_to = datetime.fromisoformat(date_to)
+            q = q.filter(Music.uploaded_at <= dt_to)
+        except Exception:
+            pass
+    my_music = q.order_by(Music.uploaded_at.desc()).limit(per_page).offset((page - 1) * per_page).all()
+    return render_template("music.html", upload_form=upload_form, musics=my_music, page=page)
 
 
 @main_bp.route("/music/<int:music_id>/delete", methods=["POST"])
@@ -239,7 +258,9 @@ def room_detail(code):
         return redirect(url_for("main.dashboard"))
     if room.owner_id != current_user.id:
         _attach_member(room, current_user, record_participation=False)
-    member_count = RoomMember.query.filter_by(room_id=room.id).count() + 1
+    #成员计数（用于显示）改为 db.session.query(db.func.count(...)) 的聚合计数，利用 RoomMember.room_id 索引。
+    member_count = db.session.query(db.func.count(RoomMember.id)).filter(RoomMember.room_id == room.id).scalar() or 0
+    member_count = member_count + 1
     # 获取房间播放列表
     room_playlist = RoomPlaylist.query.filter_by(room_id=room.id).order_by(RoomPlaylist.created_at.asc()).all()
 
@@ -355,24 +376,42 @@ def delete_room(code):
 
 @main_bp.route("/records")
 @login_required
+#支持 days、或 start/end ISO 日期过滤与分页，查询按 ListenRecord.played_at 索引排序并使用 LIMIT/OFFSET。
 def records():
     if current_user.is_admin:
         abort(403)
-    cutoff = datetime.utcnow() - timedelta(days=30)
-    listen_records = (
-        ListenRecord.query.filter(ListenRecord.user_id == current_user.id, ListenRecord.played_at >= cutoff)
-        .order_by(ListenRecord.played_at.desc())
-        .all()
-    )
-    room_records = (
-        RoomParticipationRecord.query.filter(
-            RoomParticipationRecord.user_id == current_user.id,
-            RoomParticipationRecord.participated_at >= cutoff,
-        )
-        .order_by(RoomParticipationRecord.participated_at.desc())
-        .all()
-    )
-    return render_template("records.html", listen_records=listen_records, room_records=room_records)
+    # 支持可选时间窗口（days）或 start/end ISO 日期，并分页，利用 played_at 索引
+    days = request.args.get("days", type=int)
+    start = request.args.get("start")
+    end = request.args.get("end")
+    page = int(request.args.get("page", 1))
+    per_page = 50
+    listen_q = ListenRecord.query.filter(ListenRecord.user_id == current_user.id)
+    room_q = RoomParticipationRecord.query.filter(RoomParticipationRecord.user_id == current_user.id)
+
+    if days:
+        cutoff = datetime.utcnow() - timedelta(days=days)
+        listen_q = listen_q.filter(ListenRecord.played_at >= cutoff)
+        room_q = room_q.filter(RoomParticipationRecord.participated_at >= cutoff)
+    else:
+        if start:
+            try:
+                dt_start = datetime.fromisoformat(start)
+                listen_q = listen_q.filter(ListenRecord.played_at >= dt_start)
+                room_q = room_q.filter(RoomParticipationRecord.participated_at >= dt_start)
+            except Exception:
+                pass
+        if end:
+            try:
+                dt_end = datetime.fromisoformat(end)
+                listen_q = listen_q.filter(ListenRecord.played_at <= dt_end)
+                room_q = room_q.filter(RoomParticipationRecord.participated_at <= dt_end)
+            except Exception:
+                pass
+
+    listen_records = listen_q.order_by(ListenRecord.played_at.desc()).limit(per_page).offset((page - 1) * per_page).all()
+    room_records = room_q.order_by(RoomParticipationRecord.participated_at.desc()).limit(per_page).offset((page - 1) * per_page).all()
+    return render_template("records.html", listen_records=listen_records, room_records=room_records, page=page)
 
 
 
@@ -386,7 +425,12 @@ def room_state(code):
     # 1. 智能进度计算
     current_pos = room.current_position
     if room.playback_status == 'playing' and room.updated_at:
-        elapsed = (datetime.utcnow() - room.updated_at).total_seconds()
+        # room.updated_at 可能是 naive（按 UTC 存储），为安全起见将其视为 UTC
+        if room.updated_at.tzinfo is None:
+            updated_at_utc = room.updated_at.replace(tzinfo=timezone.utc)
+        else:
+            updated_at_utc = room.updated_at.astimezone(timezone.utc)
+        elapsed = (datetime.now(timezone.utc) - updated_at_utc).total_seconds()
         current_pos += elapsed
     current_member_count = RoomMember.query.filter_by(room_id=room.id).count() + 1
     # 2. 聊天记录 (修复：必须返回 messages 字段)
@@ -399,7 +443,7 @@ def room_state(code):
         "author_id": m.author.id,
         "author_name": m.author.nickname or m.author.username,
         "author_avatar": m.author.avatar_url,
-        "created_at": m.created_at.strftime('%H:%M'),
+        "created_at": format_datetime(m.created_at, '%H:%M'),
         "content": m.content
     } for m in recent_msgs]
 
@@ -412,13 +456,15 @@ def room_state(code):
         "title": item.music.title
     } for item in playlist_items]
 
+    updated_iso = format_datetime(room.updated_at, None) if room.updated_at else None
+    
     return jsonify({
         "playback_status": room.playback_status,
         "current_track_name": room.current_track_name,
         "current_track_file": room.current_track_file,
         "current_position": current_pos,
         "is_active": room.is_active,
-        "updated_at": room.updated_at.isoformat() if room.updated_at else None,
+        "updated_at": updated_iso,
         "messages": messages_data,  # 确保前端能收到消息
         "playlist": playlist_data,  # 确保前端能收到歌单
         "member_count": current_member_count
